@@ -27,6 +27,19 @@ echo "==> Incus/LXC E2E Test"
 echo "API: $API_URL"
 echo "Repo: $REPO_KEY"
 
+
+wait_upload() {
+    local body="$1" session status
+    session=$(printf '%s' "$body" | jq -er '.session_id')
+    for _ in $(seq 1 60); do
+        status=$(curl -fsS -u "${ADMIN_USER}:${ADMIN_PASS}" "${API_URL}/incus/${REPO_KEY}/uploads/$session" | jq -er '.status')
+        [ "$status" != failed ] || { echo 'FAIL: asynchronous Incus upload failed'; return 1; }
+        [ "$status" != completed ] || return 0
+        sleep 1
+    done
+    echo 'FAIL: Incus upload timed out'; return 1
+}
+
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "$WORK_DIR"' EXIT
 
@@ -37,7 +50,7 @@ echo "==> Creating Incus repository..."
 REPO_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
     -u "${ADMIN_USER}:${ADMIN_PASS}" \
     -H "Content-Type: application/json" \
-    -d "{\"key\": \"${REPO_KEY}\", \"name\": \"Test Incus Repo\", \"format\": \"incus\", \"repo_type\": \"hosted\"}" \
+    -d "{\"key\": \"${REPO_KEY}\", \"name\": \"Test Incus Repo\", \"format\": \"incus\", \"repo_type\": \"local\", \"is_public\": true}" \
     "${API_URL}/api/v1/repositories")
 
 HTTP_CODE=$(echo "$REPO_RESPONSE" | tail -1)
@@ -90,12 +103,13 @@ UPLOAD_RESPONSE=$(curl -s -w "\n%{http_code}" -X PUT \
 
 HTTP_CODE=$(echo "$UPLOAD_RESPONSE" | tail -1)
 UPLOAD_BODY=$(echo "$UPLOAD_RESPONSE" | sed '$d')
-if [ "$HTTP_CODE" != "201" ]; then
+if [ "$HTTP_CODE" != "201" ] && [ "$HTTP_CODE" != "202" ]; then
     echo "ERROR: Upload failed (HTTP $HTTP_CODE)"
     echo "$UPLOAD_BODY"
     exit 1
 fi
 
+[ "$HTTP_CODE" != "202" ] || wait_upload "$(echo "$UPLOAD_RESPONSE" | sed '$d')"
 UNIFIED_SHA256=$(echo "$UPLOAD_BODY" | jq -r '.sha256')
 echo "  Uploaded: ubuntu-noble/20240215/incus.tar.gz (sha256:${UNIFIED_SHA256:0:12}...)"
 
@@ -128,11 +142,12 @@ META_RESPONSE=$(curl -s -w "\n%{http_code}" -X PUT \
     "${API_URL}/incus/${REPO_KEY}/images/debian-bookworm/20240301/metadata.tar.gz")
 
 HTTP_CODE=$(echo "$META_RESPONSE" | tail -1)
-if [ "$HTTP_CODE" != "201" ]; then
+if [ "$HTTP_CODE" != "201" ] && [ "$HTTP_CODE" != "202" ]; then
     echo "ERROR: Metadata upload failed (HTTP $HTTP_CODE)"
     echo "$META_RESPONSE" | sed '$d'
     exit 1
 fi
+[ "$HTTP_CODE" != "202" ] || wait_upload "$(echo "$META_RESPONSE" | sed '$d')"
 echo "  Uploaded: debian-bookworm/20240301/metadata.tar.gz"
 
 echo "==> Generating dummy squashfs rootfs..."
@@ -149,11 +164,12 @@ ROOTFS_RESPONSE=$(curl -s -w "\n%{http_code}" -X PUT \
     "${API_URL}/incus/${REPO_KEY}/images/debian-bookworm/20240301/rootfs.squashfs")
 
 HTTP_CODE=$(echo "$ROOTFS_RESPONSE" | tail -1)
-if [ "$HTTP_CODE" != "201" ]; then
+if [ "$HTTP_CODE" != "201" ] && [ "$HTTP_CODE" != "202" ]; then
     echo "ERROR: Rootfs upload failed (HTTP $HTTP_CODE)"
     echo "$ROOTFS_RESPONSE" | sed '$d'
     exit 1
 fi
+[ "$HTTP_CODE" != "202" ] || wait_upload "$(echo "$ROOTFS_RESPONSE" | sed '$d')"
 ROOTFS_SHA256=$(echo "$ROOTFS_RESPONSE" | sed '$d' | jq -r '.sha256')
 echo "  Uploaded: debian-bookworm/20240301/rootfs.squashfs (sha256:${ROOTFS_SHA256:0:12}...)"
 
@@ -215,7 +231,7 @@ fi
 
 # Check SHA256 in catalog matches upload
 CATALOG_SHA256=$(echo "$IMAGES_RESPONSE" | jq -r '.products["ubuntu-noble"].versions["20240215"].items["incus.tar.xz"].sha256 // empty')
-if [ -n "$CATALOG_SHA256" ] && [ "$CATALOG_SHA256" != "$UNIFIED_SHA256" ]; then
+if [ -z "$CATALOG_SHA256" ] || [ "$CATALOG_SHA256" != "$UNIFIED_SHA256" ]; then
     echo "ERROR: SHA256 mismatch in catalog: got $CATALOG_SHA256, expected $UNIFIED_SHA256"
     exit 1
 fi
@@ -239,7 +255,7 @@ fi
 # Compare file sizes
 ORIG_SIZE=$(stat -f%z "$ROOTFS_FILE" 2>/dev/null || stat -c%s "$ROOTFS_FILE")
 DL_SIZE=$(stat -f%z "$DOWNLOAD_FILE" 2>/dev/null || stat -c%s "$DOWNLOAD_FILE")
-if [ "$ORIG_SIZE" != "$DL_SIZE" ]; then
+if ! cmp -s "$ROOTFS_FILE" "$DOWNLOAD_FILE" || [ "$ORIG_SIZE" != "$DL_SIZE" ]; then
     echo "ERROR: Size mismatch: original=$ORIG_SIZE, downloaded=$DL_SIZE"
     exit 1
 fi

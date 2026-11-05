@@ -104,8 +104,8 @@ fi
 # ---- Test 6: /readyz has setup_complete check ----
 echo "==> [6/19] /readyz checks setup_complete"
 SETUP_STATUS=$(jq -r '.checks.setup_complete.status' /tmp/readyz.json 2>/dev/null)
-if [ "$SETUP_STATUS" = "healthy" ]; then
-    pass "/readyz setup_complete check is healthy"
+if [ "$SETUP_STATUS" = "complete" ]; then
+    pass "/readyz setup_complete check is complete"
 else
     fail "/readyz setup_complete check: $SETUP_STATUS"
 fi
@@ -207,12 +207,15 @@ fi
 
 # ---- Test 16: Metrics contain db pool gauges ----
 echo "==> [16/19] Metrics contain DB pool gauges"
-if grep -q "ak_db_pool_connections" /tmp/metrics.txt 2>/dev/null; then
+for _ in $(seq 1 66); do
+    curl -fsS -H "Authorization: Bearer $TOKEN" "$REGISTRY_URL/api/v1/admin/metrics" > /tmp/metrics.txt
+    if grep -q "ak_db_pool_connections" /tmp/metrics.txt; then break; fi
+    sleep 5
+done
+if grep -q "ak_db_pool_connections" /tmp/metrics.txt; then
     pass "ak_db_pool_connections gauges present in metrics"
 else
-    # Pool gauges are updated periodically, may not appear yet
-    echo "  WARN: ak_db_pool_connections not yet in metrics (updated every 5 min)"
-    pass "ak_db_pool_connections may not be populated yet (periodic update)"
+    fail "ak_db_pool_connections absent after periodic update bound"
 fi
 
 # ---- Test 17: X-Correlation-ID header returned ----

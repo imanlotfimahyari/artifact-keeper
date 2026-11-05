@@ -69,7 +69,7 @@ echo "  Status: $PUBLISH_STATUS"
 if [ "$PUBLISH_STATUS" = "405" ]; then
   echo "  ✅ Proxy correctly rejects publish (405)"
 else
-  echo "  ⚠️  Expected 405, got $PUBLISH_STATUS"
+  echo "FAIL: proxy accepted publish or returned unexpected status ($PUBLISH_STATUS)"; exit 1
 fi
 
 # ---- Step 3: dart pub get through proxy ----
@@ -77,17 +77,23 @@ echo ""
 echo "==> [3/4] Testing dart pub get through proxy..."
 
 WORK_DIR="$(mktemp -d)"
-trap 'rm -rf "$WORK_DIR"' EXIT
+cleanup_fixture() {
+    local result=$?
+    docker run --rm -v "$WORK_DIR:/cleanup" nginx:alpine chown -R "$(id -u):$(id -g)" /cleanup || result=1
+    rm -rf "$WORK_DIR" || result=1
+    exit "$result"
+}
+trap cleanup_fixture EXIT
 
 # Get host IP for Docker networking
-HOST_IP=$(ipconfig getifaddr en0 2>/dev/null || echo "host.docker.internal")
+HOST_IP=host.docker.internal
 
 # Setup nginx TLS proxy
 CERT_DIR="$WORK_DIR/certs"
 mkdir -p "$CERT_DIR"
 openssl req -x509 -newkey rsa:2048 -keyout "$CERT_DIR/key.pem" -out "$CERT_DIR/cert.pem" \
   -days 1 -nodes -subj "/CN=$HOST_IP" \
-  -addext "subjectAltName=IP:$HOST_IP,DNS:localhost" 2>/dev/null
+  -addext "subjectAltName=DNS:host.docker.internal,DNS:localhost,IP:127.0.0.1" 2>/dev/null
 
 docker ps -q --filter "ancestor=nginx:alpine" | xargs -r docker stop 2>/dev/null || true
 
@@ -100,7 +106,7 @@ http {
         ssl_certificate     /certs/cert.pem;
         ssl_certificate_key /certs/key.pem;
         location / {
-            proxy_pass http://host.docker.internal:8080;
+            proxy_pass http://host.docker.internal:18080;
             proxy_set_header Host \$http_host;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-Proto \$scheme;
@@ -151,7 +157,7 @@ docker run --rm \
   -e ADMIN_USER="$ADMIN_USER" \
   -e ADMIN_PASS="$ADMIN_PASS" \
   dart:stable \
-  sh -c "
+  sh -ec "
     cp /certs/self-signed.crt /usr/local/share/ca-certificates/self-signed.crt 2>/dev/null || \
       cp /certs/self-signed.crt /usr/lib/ssl/certs/self-signed.crt 2>/dev/null || \
       mkdir -p /etc/ssl/certs && cp /certs/self-signed.crt /etc/ssl/certs/self-signed.crt

@@ -58,7 +58,13 @@ fi
 # Generate test package
 echo "==> [1/5] Building test package..."
 WORK_DIR="$(mktemp -d)"
-trap 'rm -rf "$WORK_DIR"' EXIT
+cleanup_fixture() {
+    local result=$?
+    docker run --rm -v "$WORK_DIR:/cleanup" nginx:alpine chown -R "$(id -u):$(id -g)" /cleanup || result=1
+    rm -rf "$WORK_DIR" || result=1
+    exit "$result"
+}
+trap cleanup_fixture EXIT
 
 PKG_DIR="$WORK_DIR/$PKG_NAME"
 mkdir -p "$PKG_DIR/lib"
@@ -324,7 +330,7 @@ fi
 DART_PKG_VERSION="2.0.$(date +%s)"
 
 # Get host IP for Docker networking (macOS Docker Desktop)
-HOST_IP=$(ipconfig getifaddr en0 2>/dev/null || echo "host.docker.internal")
+HOST_IP=host.docker.internal
 
 echo "==> Setting up dart project..."
 DART_DIR="$WORK_DIR/dart_project"
@@ -361,7 +367,7 @@ CERT_DIR="$WORK_DIR/certs"
 mkdir -p "$CERT_DIR"
 openssl req -x509 -newkey rsa:2048 -keyout "$CERT_DIR/key.pem" -out "$CERT_DIR/cert.pem" \
   -days 1 -nodes -subj "/CN=$HOST_IP" \
-  -addext "subjectAltName=IP:$HOST_IP,DNS:localhost" 2>/dev/null
+  -addext "subjectAltName=DNS:host.docker.internal,DNS:localhost,IP:127.0.0.1" 2>/dev/null
 
 # Kill any stale nginx containers from previous runs
 docker ps -q --filter "ancestor=nginx:alpine" | xargs -r docker stop 2>/dev/null || true
@@ -375,7 +381,7 @@ http {
         ssl_certificate     /certs/cert.pem;
         ssl_certificate_key /certs/key.pem;
         location / {
-            proxy_pass http://host.docker.internal:8080;
+            proxy_pass http://host.docker.internal:18080;
             proxy_set_header Host \$http_host;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-Proto \$scheme;
@@ -409,7 +415,7 @@ else
     -v "$DART_DIR:/project" \
     -w /project \
     dart:stable \
-    sh -c "
+    sh -ec "
       cp /certs/self-signed.crt /usr/local/share/ca-certificates/self-signed.crt 2>/dev/null || \
         cp /certs/self-signed.crt /usr/lib/ssl/certs/self-signed.crt 2>/dev/null || \
         mkdir -p /etc/ssl/certs && cp /certs/self-signed.crt /etc/ssl/certs/self-signed.crt
@@ -457,7 +463,7 @@ EOF
     -e ADMIN_PASS="$ADMIN_PASS" \
     -e DART_HOST="$HOST_IP" \
     dart:stable \
-    sh -c "
+    sh -ec "
       cp /certs/self-signed.crt /usr/local/share/ca-certificates/self-signed.crt 2>/dev/null || \
         cp /certs/self-signed.crt /usr/lib/ssl/certs/self-signed.crt 2>/dev/null || \
         mkdir -p /etc/ssl/certs && cp /certs/self-signed.crt /etc/ssl/certs/self-signed.crt
@@ -480,3 +486,5 @@ EOF
 else
   echo "  ⚠️  nginx not running, skipping Dart download test"
 fi
+
+[ "${DART_EXIT:-1}" = 0 ] && [ "${DART_DL_EXIT:-1}" = 0 ] || exit 1

@@ -206,7 +206,7 @@ echo ""
 
 # === Phase 6: Full manifest validation (Docker Hub auth only) ===
 echo "==> Phase 6: Full manifest validation (requires Docker Hub auth)"
-if [ -n "$DOCKERHUB_USER" ] && [ "$ALPINE_RESP" = "200" ]; then
+if [ "$ALPINE_RESP" = "200" ]; then
     echo ""
     echo "  [6.1] Validate alpine manifest structure..."
     HAS_LAYERS=$(jq 'has("layers")' "$TMPDIR_TEST/alpine-resp.json" 2>/dev/null || echo "false")
@@ -217,15 +217,15 @@ if [ -n "$DOCKERHUB_USER" ] && [ "$ALPINE_RESP" = "200" ]; then
 
     echo "  [6.2] Check Docker-Content-Digest header..."
     DIGEST_HEADER=$(curl -s -D - -o /dev/null -H "$OCI_AUTH" -H "$ACCEPT_MANIFEST" "$REGISTRY_URL/v2/dockerhub-proxy/alpine/manifests/3.20" 2>/dev/null | grep -i "docker-content-digest" || true)
-    echo "$DIGEST_HEADER" | grep -qi "sha256:" && pass "Docker-Content-Digest header present" || skip "Docker-Content-Digest header not returned by proxy"
+    echo "$DIGEST_HEADER" | grep -qi "sha256:" && pass "Docker-Content-Digest header present" || fail "Docker-Content-Digest header not returned by proxy"
 
     echo "  [6.3] Cache: second fetch returns 200..."
     CACHE_CODE=$(curl -s -o /dev/null -w "%{http_code}" -H "$OCI_AUTH" -H "$ACCEPT_MANIFEST" "$REGISTRY_URL/v2/dockerhub-proxy/alpine/manifests/3.20")
     [ "$CACHE_CODE" = "200" ] && pass "Second alpine fetch returned 200 (cache hit)" || fail "Second alpine fetch returned HTTP $CACHE_CODE"
 else
-    skip "Docker Hub auth not configured, skipping manifest content validation"
-    skip "Docker Hub auth not configured, skipping digest header check"
-    skip "Docker Hub auth not configured, skipping cache test"
+    fail "Anonymous upstream response unavailable for manifest validation"
+    fail "Anonymous upstream response unavailable for manifest validation"
+    fail "Anonymous upstream response unavailable for manifest validation"
 fi
 echo ""
 

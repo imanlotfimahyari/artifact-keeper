@@ -6,7 +6,7 @@ set -euo pipefail
 REGISTRY_URL="${REGISTRY_URL:-http://localhost:8080}"
 REPO_KEY="${REPO_KEY:-test-cargo}"
 CA_CERT="${CA_CERT:-}"
-TEST_VERSION="1.0.$(date +%s | cut -c1-6)"
+TEST_VERSION="1.0.$(date +%s)"
 
 CARGO_REGISTRY_URL="$REGISTRY_URL/cargo/$REPO_KEY"
 
@@ -52,10 +52,13 @@ EOF
 
 # Configure cargo registry (sparse protocol)
 echo "==> Configuring cargo registry..."
-mkdir -p ~/.cargo
-cat > ~/.cargo/config.toml << EOF
+export CARGO_HOME="${CARGO_HOME:-$HOME/.cargo}"
+mkdir -p "$CARGO_HOME"
+cat > "$CARGO_HOME/config.toml" << EOF
 [registries.test-registry]
 index = "sparse+$CARGO_REGISTRY_URL/"
+
+credential-provider = "cargo:token"
 
 [registry]
 default = "test-registry"
@@ -76,7 +79,7 @@ cargo package --allow-dirty --no-verify
 
 # Push with cargo publish
 echo "==> Publishing crate with cargo..."
-cargo publish --registry test-registry --allow-dirty --no-verify || echo "Publish may have succeeded with warnings"
+cargo publish --registry test-registry --allow-dirty --no-verify
 
 # Verify push
 echo "==> Verifying crate was published..."
@@ -92,7 +95,16 @@ test-crate-native = { version = "$TEST_VERSION", registry = "test-registry" }
 EOF
 
 # Try to build (which will fetch the dependency)
-cargo build || echo "Build attempted"
+cat > src/main.rs <<'RUST'
+fn main() { print!("{}", test_crate_native::hello()); }
+RUST
+# A fresh package cache proves this consumer fetches the published crate.
+cp "$CARGO_HOME/config.toml" "$WORK_DIR/registry-config.toml"
+export CARGO_HOME="$WORK_DIR/fresh-cargo"
+mkdir -p "$CARGO_HOME"
+cp "$WORK_DIR/registry-config.toml" "$CARGO_HOME/config.toml"
+cargo build
+[ "$(cargo run --offline --quiet)" = 'Hello from test-crate-native!' ]
 
 echo ""
 echo "✅ Cargo native client test PASSED"

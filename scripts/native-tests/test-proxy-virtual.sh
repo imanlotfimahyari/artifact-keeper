@@ -252,22 +252,27 @@ else
     fail "PyPI simple index proxy returned HTTP $PYPI_INDEX_CODE"
 fi
 
-# --- Test 2.4: PyPI proxy - download a file via direct proxy path ---
-echo "  [2.4] PyPI proxy: download package file for 'six'..."
-# Use the packages/ proxy path directly (format-specific file download)
-PYPI_DL_CODE=$(curl -s -o "$TMPDIR_TEST/pypi-file.whl" -w "%{http_code}" \
-    "$REGISTRY_URL/pypi/pypi-proxy/packages/six-1.16.0-py2.py3-none-any.whl")
-if [ "$PYPI_DL_CODE" = "200" ]; then
-    PYPI_DL_SIZE=$(wc -c < "$TMPDIR_TEST/pypi-file.whl" | tr -d ' ')
-    if [ "$PYPI_DL_SIZE" -gt 100 ]; then
-        pass "PyPI file downloaded: six-1.16.0 wheel (${PYPI_DL_SIZE} bytes)"
-    else
-        fail "PyPI file too small: ${PYPI_DL_SIZE} bytes"
-    fi
-else
-    # PyPI file downloads may go through the upstream directly via rewritten URLs
-    # This is expected behavior — the simple index URLs point to files.pythonhosted.org
-    skip "PyPI file proxy returned HTTP $PYPI_DL_CODE (upstream URLs not rewritten — expected for now)"
+echo "  [2.4] PyPI proxy: download the advertised six wheel and verify its digest..."
+if python3 - "$REGISTRY_URL" "$TMPDIR_TEST/pypi-index.html" "$TMPDIR_TEST/pypi-file.whl" <<'PYPI_WHEEL'
+from html.parser import HTMLParser
+from pathlib import Path
+import hashlib,sys,urllib.request,urllib.parse,zipfile,io
+class Links(HTMLParser):
+ def __init__(self):super().__init__();self.links=[]
+ def handle_starttag(self,tag,attrs):
+  if tag=='a':self.links.extend(v for k,v in attrs if k=='href')
+base,index,out=sys.argv[1:];p=Links();p.feed(Path(index).read_text())
+href=next(v for v in p.links if 'six-1.16.0-py2.py3-none-any.whl' in v)
+url=urllib.parse.urljoin(base+'/pypi/pypi-proxy/simple/six/',href)
+assert urllib.parse.urlparse(url).netloc==urllib.parse.urlparse(base).netloc,'download escaped backend'
+url,fragment=urllib.parse.urldefrag(url)
+with urllib.request.urlopen(url,timeout=60) as f:body=f.read()
+assert fragment.startswith('sha256=') and hashlib.sha256(body).hexdigest()==fragment[7:]
+with zipfile.ZipFile(io.BytesIO(body)) as z:assert z.testzip() is None and 'six.py' in z.namelist()
+Path(out).write_bytes(body)
+PYPI_WHEEL
+then pass "PyPI advertised wheel fetched through backend with matching SHA-256"
+else fail "PyPI advertised wheel download or digest validation failed"
 fi
 
 # --- Test 2.5: Hex proxy - fetch package metadata for 'phoenix' ---
