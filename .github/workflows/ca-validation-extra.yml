@@ -1,4 +1,4 @@
-name: PR 5194 repaired native comparison v2
+name: PR 5194 corrected curation comparison
 'on':
   push:
     branches:
@@ -19,54 +19,14 @@ jobs:
     timeout-minutes: 45
     strategy:
       fail-fast: false
-      max-parallel: 10
+      max-parallel: 2
       matrix:
         include:
-        - mode: merged
-          profile: deb
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42065906002
-          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
-        - mode: merged
-          profile: hex
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42065906002
-          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
-        - mode: merged
-          profile: protobuf
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42065906002
-          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
-        - mode: merged
-          profile: conda
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42065906002
-          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
         - mode: merged
           profile: curation
           image_repo: imanlotfimahyari/artifact-keeper
           image_run: 42065906002
           product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
-        - mode: base
-          profile: deb
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42066236236
-          product_sha: 0bffa44cb2e7a4b85c4e54780628e8642e34ed14
-        - mode: base
-          profile: hex
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42066236236
-          product_sha: 0bffa44cb2e7a4b85c4e54780628e8642e34ed14
-        - mode: base
-          profile: protobuf
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42066236236
-          product_sha: 0bffa44cb2e7a4b85c4e54780628e8642e34ed14
-        - mode: base
-          profile: conda
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42066236236
-          product_sha: 0bffa44cb2e7a4b85c4e54780628e8642e34ed14
         - mode: base
           profile: curation
           image_repo: imanlotfimahyari/artifact-keeper
@@ -139,21 +99,67 @@ jobs:
         \ || true\n+            -d \"{\\\"member_key\\\":\\\"$REPO_KEY_LOCAL2\\\",\\\"priority\\\":2}\" > /dev/null\
         \ || { fail \"Add second virtual member\"; exit 1; }\n \n         # 7.1: Fetch virtual repo repodata\n \
         \        VIRT_RD=$(curl -sf \"$BACKEND_URL/conda/$VIRT_KEY/noarch/repodata.json\" 2>/dev/null)\ndiff --git\
-        \ a/scripts/native-tests/test-curation.sh b/scripts/native-tests/test-curation.sh\nindex 91cd40c8..f5aba7d2\
-        \ 100755\n--- a/scripts/native-tests/test-curation.sh\n+++ b/scripts/native-tests/test-curation.sh\n@@ -132,6\
-        \ +132,16 @@ psql -c \"UPDATE repositories SET\n \n pass \"Enable curation on RPM staging repo\"\n \n+#\
-        \ Fail closed without a trusted upstream key, then enable the signed fixture.\n+# The fixture workflow signs\
-        \ repomd.xml and pins primary.xml.gz's digest.\n+curl -fsS -X POST \"$CURATION_URL/repos/curation-rpm-staging/sync\"\
-        \ -H \"$AUTH\" | jq -e '.succeeded == false' >/dev/null || { fail \"Keyless sync reported success\"; exit\
-        \ 1; }\n+KEYLESS_COUNT=$(curl -fsS \"$CURATION_URL/packages?staging_repo_id=$STAGING_RPM_ID&limit=50\" -H\
-        \ \"$AUTH\" | jq 'length')\n+[ \"$KEYLESS_COUNT\" = \"0\" ] || { fail \"Keyless RPM sync ingested packages\"\
+        \ a/scripts/native-tests/test-curation.sh b/scripts/native-tests/test-curation.sh\nindex 91cd40c8..0eea9e20\
+        \ 100755\n--- a/scripts/native-tests/test-curation.sh\n+++ b/scripts/native-tests/test-curation.sh\n@@ -12,7\
+        \ +12,7 @@\n #\n # Requires: curl, jq, psql (postgresql-client), bash\n # Environment: REGISTRY_URL, ADMIN_USER,\
+        \ ADMIN_PASS, MOCK_UPSTREAM_URL, PG* vars\n-set -uo pipefail\n+set -euo pipefail\n \n REGISTRY_URL=\"${REGISTRY_URL:-http://localhost:8080}\"\
+        \n ADMIN_USER=\"${ADMIN_USER:-admin}\"\n@@ -59,6 +59,13 @@ echo \"Registry: $REGISTRY_URL\"\n echo \"Mock\
+        \ upstream: $MOCK_UPSTREAM_URL\"\n echo \"\"\n \n+# Re-evaluation processes pending rows only. Reset this\
+        \ disposable fixture's\n+# catalog before testing a changed rule, as the service's regression tests do.\n\
+        +reset_fixture_packages() {\n+    local fixture_repo_id=\"$1\"\n+    psql -v ON_ERROR_STOP=1 -c \"UPDATE\
+        \ curation_packages SET status = 'pending' WHERE staging_repo_id = '$fixture_repo_id';\" >/dev/null || exit\
+        \ 1\n+}\n+\n # ============================================================================\n # Auth\n #\
+        \ ============================================================================\n@@ -132,6 +139,16 @@ psql\
+        \ -c \"UPDATE repositories SET\n \n pass \"Enable curation on RPM staging repo\"\n \n+# Fail closed without\
+        \ a trusted upstream key, then enable the signed fixture.\n+# The fixture workflow signs repomd.xml and\
+        \ pins primary.xml.gz's digest.\n+curl -fsS -X POST \"$CURATION_URL/repos/curation-rpm-staging/sync\" -H\
+        \ \"$AUTH\" | jq -e '.succeeded == false' >/dev/null || { fail \"Keyless sync reported success\"; exit 1;\
+        \ }\n+KEYLESS_COUNT=$(curl -fsS \"$CURATION_URL/packages?staging_repo_id=$STAGING_RPM_ID&limit=50\" -H \"\
+        $AUTH\" | jq 'length')\n+[ \"$KEYLESS_COUNT\" = \"0\" ] || { fail \"Keyless RPM sync ingested packages\"\
         ; exit 1; }\n+pass \"Keyless RPM sync refuses untrusted metadata\"\n+TRUST_PAYLOAD=$(jq -n --rawfile key\
         \ \"${CURATION_GPG_KEY:?CURATION_GPG_KEY must name the fixture public key}\" '{trusted_gpg_key:$key}')\n\
         +curl -fsS -X PATCH \"$API_URL/repositories/curation-rpm-remote\" -H \"$AUTH\" -H 'Content-Type: application/json'\
         \ -d \"$TRUST_PAYLOAD\" >/dev/null\n+curl -fsS -X POST \"$CURATION_URL/repos/curation-rpm-staging/sync\"\
         \ -H \"$AUTH\" | jq -e '.succeeded == true' >/dev/null || { fail \"Signed sync failed\"; exit 1; }\n+\n\
         \ # Poll the packages endpoint until 6 packages appear (max 90 seconds)\n echo \"  Waiting for curation\
-        \ sync (up to 90s)...\"\n SYNC_OK=false\ndiff --git a/scripts/native-tests/test-deb-hosted.py b/scripts/native-tests/test-deb-hosted.py\n\
+        \ sync (up to 90s)...\"\n SYNC_OK=false\n@@ -178,6 +195,13 @@ else\n     fail \"Stats endpoint: expected\
+        \ 6 review, got $STATS_REVIEW\"\n fi\n \n+# Existing decisions are preserved by a pending-only re-evaluation.\n\
+        +UNCHANGED_COUNT=$(curl -fsS -X POST \"$CURATION_URL/packages/re-evaluate\" \\\n+    -H \"$AUTH\" -H 'Content-Type:\
+        \ application/json' \\\n+    -d \"{\\\"staging_repo_id\\\":\\\"$STAGING_RPM_ID\\\",\\\"default_action\\\"\
+        :\\\"review\\\"}\")\n+[ \"$UNCHANGED_COUNT\" = \"0\" ] || { fail \"Re-evaluation changed decided rows\"\
+        ; exit 1; }\n+pass \"Pending-only re-evaluation preserves existing decisions\"\n+\n # ============================================================================\n\
+        \ # Phase 4: Create block rule and re-evaluate\n # ============================================================================\n\
+        @@ -197,10 +221,11 @@ else\n fi\n \n # Re-evaluate all packages with default_action=review\n-EVAL_COUNT=$(curl\
+        \ -sf -X POST \"$CURATION_URL/packages/re-evaluate\" \\\n+EVAL_COUNT=$(reset_fixture_packages \"$STAGING_RPM_ID\"\
+        ; curl -sf -X POST \"$CURATION_URL/packages/re-evaluate\" \\\n     -H \"$AUTH\" -H 'Content-Type: application/json'\
+        \ \\\n     -d \"{\\\"staging_repo_id\\\":\\\"$STAGING_RPM_ID\\\",\\\"default_action\\\":\\\"review\\\"}\"\
+        )\n-pass \"Re-evaluated packages (count: $EVAL_COUNT)\"\n+[ \"$EVAL_COUNT\" = \"6\" ] || { fail \"Expected\
+        \ six pending fixture rows to be evaluated, got $EVAL_COUNT\"; exit 1; }\n+pass \"Re-evaluated six pending\
+        \ fixture packages\"\n \n # Verify telnet-server is blocked\n TELNET_STATUS=$(curl -sf \"$CURATION_URL/packages?staging_repo_id=$STAGING_RPM_ID&status=blocked\"\
+        \ \\\n@@ -229,7 +254,7 @@ else\n fi\n \n # Re-evaluate\n-curl -sf -X POST \"$CURATION_URL/packages/re-evaluate\"\
+        \ \\\n+reset_fixture_packages \"$STAGING_RPM_ID\"; curl -sf -X POST \"$CURATION_URL/packages/re-evaluate\"\
+        \ \\\n     -H \"$AUTH\" -H 'Content-Type: application/json' \\\n     -d \"{\\\"staging_repo_id\\\":\\\"\
+        $STAGING_RPM_ID\\\",\\\"default_action\\\":\\\"review\\\"}\" > /dev/null\n \n@@ -260,7 +285,7 @@ else\n\
+        \ fi\n \n # Re-evaluate\n-curl -sf -X POST \"$CURATION_URL/packages/re-evaluate\" \\\n+reset_fixture_packages\
+        \ \"$STAGING_RPM_ID\"; curl -sf -X POST \"$CURATION_URL/packages/re-evaluate\" \\\n     -H \"$AUTH\" -H\
+        \ 'Content-Type: application/json' \\\n     -d \"{\\\"staging_repo_id\\\":\\\"$STAGING_RPM_ID\\\",\\\"default_action\\\
+        \":\\\"review\\\"}\" > /dev/null\n \n@@ -292,7 +317,7 @@ else\n fi\n \n # Re-evaluate\n-curl -sf -X POST\
+        \ \"$CURATION_URL/packages/re-evaluate\" \\\n+reset_fixture_packages \"$STAGING_RPM_ID\"; curl -sf -X POST\
+        \ \"$CURATION_URL/packages/re-evaluate\" \\\n     -H \"$AUTH\" -H 'Content-Type: application/json' \\\n\
+        \     -d \"{\\\"staging_repo_id\\\":\\\"$STAGING_RPM_ID\\\",\\\"default_action\\\":\\\"review\\\"}\" > /dev/null\n\
+        \ \n@@ -438,7 +463,7 @@ else\n fi\n \n # Re-evaluate after deleting arch rule: wget should go back to review\n\
+        -curl -sf -X POST \"$CURATION_URL/packages/re-evaluate\" \\\n+reset_fixture_packages \"$STAGING_RPM_ID\"\
+        ; curl -sf -X POST \"$CURATION_URL/packages/re-evaluate\" \\\n     -H \"$AUTH\" -H 'Content-Type: application/json'\
+        \ \\\n     -d \"{\\\"staging_repo_id\\\":\\\"$STAGING_RPM_ID\\\",\\\"default_action\\\":\\\"review\\\"}\"\
+        \ > /dev/null\n \n@@ -469,7 +494,7 @@ else\n fi\n \n # Re-evaluate: nano should now be blocked (global rule\
+        \ takes effect, priority 1 < 10)\n-curl -sf -X POST \"$CURATION_URL/packages/re-evaluate\" \\\n+reset_fixture_packages\
+        \ \"$STAGING_RPM_ID\"; curl -sf -X POST \"$CURATION_URL/packages/re-evaluate\" \\\n     -H \"$AUTH\" -H\
+        \ 'Content-Type: application/json' \\\n     -d \"{\\\"staging_repo_id\\\":\\\"$STAGING_RPM_ID\\\",\\\"default_action\\\
+        \":\\\"review\\\"}\" > /dev/null\n \n@@ -573,7 +598,7 @@ else\n fi\n \n # Re-evaluate DEB packages\n-curl\
+        \ -sf -X POST \"$CURATION_URL/packages/re-evaluate\" \\\n+reset_fixture_packages \"$STAGING_DEB_ID\"; curl\
+        \ -sf -X POST \"$CURATION_URL/packages/re-evaluate\" \\\n     -H \"$AUTH\" -H 'Content-Type: application/json'\
+        \ \\\n     -d \"{\\\"staging_repo_id\\\":\\\"$STAGING_DEB_ID\\\",\\\"default_action\\\":\\\"allow\\\"}\"\
+        \ > /dev/null\n \ndiff --git a/scripts/native-tests/test-deb-hosted.py b/scripts/native-tests/test-deb-hosted.py\n\
         new file mode 100644\nindex 00000000..97a53ce2\n--- /dev/null\n+++ b/scripts/native-tests/test-deb-hosted.py\n\
         @@ -0,0 +1,79 @@\n+#!/usr/bin/env python3\n+\"\"\"Verify a hosted Debian repository with isolated native\
         \ APT state.\n+\n+Uses a synthetic unsigned package, queries suite/component metadata, and checks\n+that\
@@ -295,8 +301,7 @@ jobs:
         \  package = next(fields(value) for value in message[1]\n+                   if fields(value)[1] == [name.encode()])\n\
         +    if kind == \"versions\":\n+        assert version.encode() in package[2]\n+print(f\"PASS: authenticated\
         \ Hex {kind}\")\nPATCH\ngit apply --check /tmp/native-setups.patch\ngit apply /tmp/native-setups.patch\n\
-        for script in scripts/native-tests/test-{hex,protobuf,conda,curation}.sh scripts/native-tests/prepare-curation-fixture.sh;\
-        \ do bash -n \"$script\"; done\n"
+        bash -n scripts/native-tests/test-curation.sh\n"
     - name: Verify exact product source
       env:
         GH_TOKEN: ${{ github.token }}
