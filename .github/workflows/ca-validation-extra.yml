@@ -1,4 +1,4 @@
-name: PR 5194 final Incus and Dart native fixtures
+name: PR 5194 strict Cargo and unskipped proxy checks
 'on':
   push:
     branches:
@@ -19,26 +19,21 @@ jobs:
     timeout-minutes: 28
     strategy:
       fail-fast: false
-      max-parallel: 7
+      max-parallel: 3
       matrix:
         include:
         - mode: merged
-          profile: incus
+          profile: cargo
           image_repo: imanlotfimahyari/artifact-keeper
           image_run: 42065906002
           product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
         - mode: merged
-          profile: pub
+          profile: docker-proxy
           image_repo: imanlotfimahyari/artifact-keeper
           image_run: 42065906002
           product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
         - mode: merged
-          profile: pub-proxy
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42065906002
-          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
-        - mode: merged
-          profile: pub-virtual
+          profile: proxy-virtual
           image_repo: imanlotfimahyari/artifact-keeper
           image_run: 42065906002
           product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
@@ -306,153 +301,306 @@ jobs:
         docker load < backend-image.tar.gz
         docker tag artifact-keeper-backend:pr-test artifact-keeper-backend:test
     - name: Run strict native validation
-      run: "set -euo pipefail\nmkdir -p reports .pki\nset -a\n. ./.env.test\nset +a\nbash scripts/pki/generate-certs.sh .pki\
-        \ > reports/pki.log 2>&1\nbash scripts/pki/generate-gpg.sh .pki >> reports/pki.log 2>&1\nif [ \"$PROFILE\" = curation\
-        \ ]; then\n  bash scripts/native-tests/prepare-curation-fixture.sh >> reports/pki.log 2>&1\nfi\nif [ \"$PROFILE\"\
-        \ = terraform-mirror ]; then\n  openssl req -x509 -newkey rsa:2048 -nodes -keyout .pki/ca.key -out .pki/ca.crt -days\
-        \ 2 -subj '/CN=Native validation CA' > reports/tls.log 2>&1\n  openssl req -newkey rsa:2048 -nodes -keyout .pki/server.key\
-        \ -out .pki/server.csr -subj '/CN=native.test' >> reports/tls.log 2>&1\n  printf 'subjectAltName=DNS:native.test\\\
-        nextendedKeyUsage=serverAuth\\n' > .pki/ext.cnf\n  openssl x509 -req -in .pki/server.csr -CA .pki/ca.crt -CAkey .pki/ca.key\
-        \ -CAcreateserial -out .pki/server.crt -days 2 -extfile .pki/ext.cnf >> reports/tls.log 2>&1\n  cat > tls.conf <<'NGINX'\n\
-        server { listen 8443 ssl; server_name native.test; ssl_certificate /fixture/server.crt; ssl_certificate_key /fixture/server.key;\
-        \ location / { proxy_pass http://backend:8080; proxy_set_header Host $http_host; proxy_set_header X-Forwarded-Proto\
-        \ https; } }\nNGINX\nfi\ndocker compose -f docker-compose.test.yml --profile all --profile \"$PROFILE\" config --format\
-        \ json > source-compose.json\ncat > configure.py <<'CONFIG'\nimport json,os\nfrom pathlib import Path\nc=json.loads(Path('source-compose.json').read_text());s=c['services'];b=s['backend'];b.pop('build',None)\n\
-        b['ports']=[{'target':8080,'published':'18080','host_ip':'0.0.0.0','protocol':'tcp'}]\nfor name,v in list(b['networks'].items()):\n\
-        \ v=v or {};v.setdefault('aliases',[]).append('backend.test');b['networks'][name]=v\nfor name,v in s.items():\n if\
-        \ name.endswith('-test'):\n  env=v.setdefault('environment',{})\n  for k in ('ADMIN_PASS','ADMIN_PASSWORD','AK_TEST_ADMIN_PASSWORD','REGISTRY_PASS'):env[k]=os.environ['ADMIN_PASS']\n\
-        \  for k in ('REGISTRY_URL','API_URL','BACKEND_URL'):\n   if k in env:env[k]='http://backend.test:8080'\ns['hex-test']['environment']['HEX_REPO_KEY']='ci-hex'\n\
-        s['hex-test']['image']='elixir:1.19-alpine'\ns['protobuf-test']['environment']['REPO_KEY']='ci-protobuf'\nfor name\
-        \ in ('hex','protobuf'):\n s[name+'-test']['command']=['sh','-c',f'apk add --no-cache bash curl jq tar coreutils python3\
-        \ openssl perl-utils >/dev/null 2>&1 && bash /scripts/test-{name}.sh']\ns['conda-test']['environment'].update({'BACKEND_URL':'http://backend.test:8080','AUTH_USER':'admin','AUTH_PASS':os.environ['ADMIN_PASS']})\n\
-        s['conda-test']['command']=['bash','-c','apt-get update -qq && apt-get install -y -qq --no-install-recommends curl\
-        \ jq zip unzip bzip2 zstd openssl >/dev/null && bash /scripts/test-conda.sh']\nif 'mock-upstream' in s:\n s['mock-upstream']['healthcheck']['test']=['CMD','wget','-q','--spider','http://127.0.0.1/rpm/repodata/repomd.xml']\n\
-        \ s['mock-upstream']['networks']={'e2e-test-network':{'aliases':['mock-upstream.test']}}\n s['curation-test']['environment']['MOCK_UPSTREAM_URL']='http://mock-upstream.test'\n\
-        \ s['curation-test']['environment']['CURATION_GPG_KEY']='/fixture/gpg-signing.pub'\n s['curation-test'].setdefault('volumes',[]).append({'type':'bind','source':str(Path('.pki/gpg-signing.pub').resolve()),'target':'/fixture/gpg-signing.pub','read_only':True})\n\
-        if os.environ['PROFILE']=='terraform-mirror':\n s['tls-fixture']={'image':'nginx:alpine','volumes':[str(Path('.pki').resolve())+':/fixture:ro',str(Path('tls.conf').resolve())+':/etc/nginx/conf.d/default.conf:ro'],'networks':{'e2e-test-network':{'aliases':['native.test']}},'depends_on':{'backend':{'condition':'service_healthy'}}}\n\
-        \ v=s['terraform-mirror-test'];v['environment'].update({'REGISTRY_URL':'https://native.test:8443','SSL_CERT_FILE':'/fixture/ca.crt','CURL_CA_BUNDLE':'/fixture/ca.crt','RUN_TERRAFORM_CLI':'1'})\n\
-        \ v.setdefault('volumes',[]).append({'type':'bind','source':str(Path('.pki').resolve()),'target':'/fixture','read_only':True})\n\
-        \ v.setdefault('depends_on',{})['tls-fixture']={'condition':'service_started'}\ns['docker-test']['command']=['sh','-c','apk\
-        \ add --no-cache bash curl jq python3 >/dev/null 2>&1 && bash /scripts/test-docker.sh']\nif os.environ['PROFILE']=='docker':\n\
-        \ v=s['docker-test'];v.pop('networks',None);v['network_mode']='host';v['environment']['REGISTRY_URL']='localhost:18080'\n\
-        s['maven-test']['environment']['REGISTRY_URL']='http://backend.test:8080/maven/test-maven'\nif os.environ['PROFILE']=='tag-replication':\n\
-        \ s['tag-replication-test']['command']=['bash','-c','apt-get update -qq && apt-get install -y -qq curl jq >/dev/null\
-        \ && bash /scripts/test-tag-replication.sh']\nif os.environ['PROFILE']=='health-probes':b['environment']['EXPOSE_DETAILED_HEALTH']='true'\n\
-        Path('validation-compose.json').write_text(json.dumps(c))\nCONFIG\npython3 configure.py\ncat > strict-native.py <<'STRICT'\n\
-        import os,json,time,hashlib,urllib.request,urllib.error,subprocess,tempfile,pathlib,zipfile,io\nBASE='http://127.0.0.1:18080';TOKEN=None;ROOT=pathlib.Path.cwd();PROFILE=os.environ['PROFILE']\n\
-        def api(method,path,data=None,headers=None):\n h=dict(headers or {})\n if TOKEN:h['Authorization']='Bearer '+TOKEN\n\
-        \ if isinstance(data,dict):data=json.dumps(data).encode();h['Content-Type']='application/json'\n r=urllib.request.Request(BASE+path,data=data,headers=h,method=method)\n\
-        \ try:\n  with urllib.request.urlopen(r,timeout=30) as f:return f.status,f.read()\n except urllib.error.HTTPError\
-        \ as e:return e.code,e.read()\ndef ok(method,path,data=None,headers=None):\n code,body=api(method,path,data,headers)\n\
-        \ assert 200<=code<300,(method,path,code,body[:180])\n return body\ndef cmd(args,**kw):\n r=subprocess.run(args,text=True,capture_output=True,**kw)\n\
-        \ if r.returncode:\n  print(r.stdout[-4000:],flush=True);print(r.stderr[-4000:],flush=True)\n  raise RuntimeError('native\
-        \ command failed: '+args[0]+' exit='+str(r.returncode))\n return r.stdout\nfor _ in range(90):\n try:\n  if api('GET','/health')[0]==200:break\n\
-        \ except OSError:pass\n time.sleep(1)\nelse:raise AssertionError('backend readiness timed out')\nTOKEN=json.loads(ok('POST','/api/v1/auth/login',{'username':'admin','password':os.environ['ADMIN_PASS']}))['access_token']\n\
-        key='strict-'+PROFILE\nfmt={'deb':'debian','rpm':'rpm','go':'go','helm':'helm'}[PROFILE]\nok('POST','/api/v1/repositories',{'key':key,'name':'Synthetic\
-        \ '+PROFILE,'format':fmt,'repo_type':'local','is_public':True})\nwith tempfile.TemporaryDirectory() as td:\n d=pathlib.Path(td);d.chmod(0o755)\n\
-        \ if PROFILE=='go':\n  module='example.com/ca-native-fixture';version='v1.0.0'\n  gomod=b'module example.com/ca-native-fixture\\\
-        n\\ngo 1.20\\n'\n  source=b'package fixture\\nfunc Message() string { return \"ca-native-fixture\" }\\n'\n  buf=io.BytesIO()\n\
-        \  with zipfile.ZipFile(buf,'w') as z:\n   z.writestr(module+'@'+version+'/go.mod',gomod);z.writestr(module+'@'+version+'/fixture.go',source)\n\
-        \  path='/go/'+key+'/'+module+'/@v/'+version\n  ok('PUT',path+'.mod',gomod);ok('PUT',path+'.zip',buf.getvalue())\n\
-        \  assert ok('GET',path+'.zip')==buf.getvalue()\n  assert json.loads(ok('GET',path+'.info'))['Version']==version\n\
-        \  (d/'go.mod').write_text('module consumer.example\\n\\ngo 1.20\\n')\n  (d/'main.go').write_text('package main\\\
-        nimport (\"fmt\"; f \"example.com/ca-native-fixture\")\\nfunc main(){fmt.Print(f.Message())}\\n')\n  env=dict(os.environ,GOPROXY=BASE+'/go/'+key,GOSUMDB='off',GOPRIVATE='',GONOPROXY='',GOMODCACHE=str(d/'cache'),GOWORK='off')\n\
-        \  cmd(['go','get',module+'@'+version],cwd=d,env=env)\n  assert cmd(['go','run','.'],cwd=d,env=env)=='ca-native-fixture'\n\
-        \  print('PASS: strict Go upload, proxy download and compiled native consumer')\n elif PROFILE=='helm':\n  chart=d/'ca-native-chart';(chart/'templates').mkdir(parents=True)\n\
-        \  (chart/'Chart.yaml').write_text('apiVersion: v2\\nname: ca-native-chart\\nversion: 1.0.0\\n')\n  (chart/'templates'/'config.yaml').write_text('apiVersion:\
-        \ v1\\nkind: ConfigMap\\nmetadata:\\n  name: fixture\\n')\n  cmd(['helm','package',str(chart),'--destination',str(d)])\n\
-        \  package=d/'ca-native-chart-1.0.0.tgz'\n  cmd(['curl','-fsS','-H','Authorization: Bearer '+TOKEN,'-F','chart=@'+str(package),BASE+'/helm/'+key+'/api/charts'])\n\
-        \  env=dict(os.environ,HELM_CONFIG_HOME=str(d/'config'),HELM_CACHE_HOME=str(d/'cache'),HELM_DATA_HOME=str(d/'data'))\n\
-        \  cmd(['helm','repo','add','fixture',BASE+'/helm/'+key],env=env)\n  cmd(['helm','repo','update'],env=env)\n  (d/'download').mkdir();cmd(['helm','pull','fixture/ca-native-chart','--version','1.0.0','--destination',str(d/'download')],env=env)\n\
-        \  assert (d/'download'/package.name).read_bytes()==package.read_bytes()\n  assert 'version: 1.0.0' in cmd(['helm','show','chart',str(d/'download'/package.name)],env=env)\n\
-        \  print('PASS: strict Helm package, ChartMuseum upload, native index/pull and byte equality')\n elif PROFILE=='rpm':\n\
-        \  p=ROOT/'backend/tests/fixtures/ak-meta-test-1.0-1.noarch.rpm'\n  ok('PUT','/rpm/'+key+'/packages/'+p.name,p.read_bytes(),{'Content-Type':'application/x-rpm'})\n\
-        \  assert ok('GET','/rpm/'+key+'/packages/'+p.name)==p.read_bytes()\n  for _ in range(60):\n   c,b=api('GET','/rpm/'+key+'/repodata/repomd.xml')\n\
-        \   if c==200 and b'repomd' in b:break\n   time.sleep(1)\n  else:raise AssertionError('RPM repodata unavailable')\n\
-        \  network=json.loads(cmd(['docker','inspect','e2e-test-backend']))[0]['NetworkSettings']['Networks']\n  net=next(iter(network))\n\
-        \  script='set -e; dnf -q -y install --allowerasing dnf-plugins-core >/dev/null; dnf -q --repofrompath=fixture,http://backend.test:8080/rpm/'+key+'\
-        \ --disablerepo=\"*\" --enablerepo=fixture --setopt=fixture.gpgcheck=0 repoquery --qf \"%{name}-%{version}\" | grep\
-        \ -Fx ak-meta-test-1.0'\n  output=cmd(['docker','run','--rm','--network',net,'rockylinux/rockylinux:9','bash','-c',script]);assert\
-        \ 'ak-meta-test-1.0' in output\n  print('PASS: strict RPM fixture upload/download, repodata and native DNF repoquery\
-        \ (unsigned test fixture)')\n elif PROFILE=='deb':\n  pkg=d/'pkg';(pkg/'DEBIAN').mkdir(parents=True);(pkg/'usr/share/ca-native-deb').mkdir(parents=True)\n\
-        \  (pkg/'DEBIAN/control').write_text('Package: ca-native-deb\\nVersion: 1.0.0\\nArchitecture: all\\nMaintainer: Test\
-        \ <test@example.com>\\nDescription: synthetic validation package\\n')\n  (pkg/'usr/share/ca-native-deb/data').write_text('synthetic\
-        \ fixture\\n')\n  package=d/'ca-native-deb_1.0.0_all.deb';cmd(['dpkg-deb','--build','--root-owner-group',str(pkg),str(package)])\n\
-        \  path='/debian/'+key+'/pool/main/c/ca-native-deb/'+package.name\n  ok('PUT',path,package.read_bytes(),{'Content-Type':'application/vnd.debian.binary-package'})\n\
-        \  assert ok('GET',path)==package.read_bytes()\n  lists=d/'lists';(lists/'partial').mkdir(parents=True);cache=d/'apt-cache';(cache/'archives/partial').mkdir(parents=True)\n\
-        \  sources=d/'sources.list';sources.write_text('deb [trusted=yes] '+BASE+'/debian/'+key+' stable main\\n')\n  parts=d/'parts';parts.mkdir()\n\
-        \  opts=['-o','Dir::Etc::sourcelist='+str(sources),'-o','Dir::Etc::sourceparts='+str(parts),'-o','Dir::State::lists='+str(lists),'-o','Dir::Cache='+str(cache),'-o','APT::Get::List-Cleanup=0']\n\
-        \  cmd(['apt-get',*opts,'update']);(d/'download').mkdir();cmd(['apt-get',*opts,'download','ca-native-deb=1.0.0'],cwd=d/'download')\n\
-        \  assert (d/'download'/package.name).read_bytes()==package.read_bytes()\n  print('PASS: strict DEB build/upload,\
-        \ native APT metadata/download and byte equality (unsigned test fixture)')\nSTRICT\nif [[ \"$PROFILE\" =~ ^(go|helm|rpm|deb)$\
-        \ ]]; then\n  docker compose -f validation-compose.json up -d --no-build --wait --wait-timeout 180 postgres backend\
-        \ > reports/start.log 2>&1\n  if [ \"$PROFILE\" = helm ]; then\n    curl -fsSL https://get.helm.sh/helm-v3.17.4-linux-amd64.tar.gz\
-        \ -o /tmp/native-helm.tgz\n    tar -xzf /tmp/native-helm.tgz -C /tmp\n    export PATH=/tmp/linux-amd64:$PATH\n  fi\n\
-        \  timeout 720 python3 strict-native.py > reports/test.log 2>&1\nelif [[ \"$PROFILE\" =~ ^(deb-flat-proxy|incus|pacman|pub|pub-proxy|pub-virtual|health-probes)$\
-        \ ]]; then\n  docker compose -f validation-compose.json up -d --no-build --wait --wait-timeout 180 trivy setup pki\
-        \ > reports/start.log 2>&1\n  export REGISTRY_URL=http://127.0.0.1:18080 API_URL=http://127.0.0.1:18080 CONTAINER_RUNTIME=docker\n\
-        \  # Repair Linux fixture addressing and current repository API vocabulary only.\n  python3 - <<'HOSTPATCH'\nfrom\
-        \ pathlib import Path\np=Path('scripts/native-tests/test-incus.sh')\nt=p.read_text().replace(r'\\\"hosted\\\"',r'\\\
-        \"local\\\"')\nt=t.replace(r'\\\"repo_type\\\": \\\"local\\\"', r'\\\"repo_type\\\": \\\"local\\\", \\\"is_public\\\
-        \": true')\nwait='''\nwait_upload() {\n    local body=\"$1\" session status\n    session=$(printf '%s' \"$body\" |\
-        \ jq -er '.session_id')\n    for _ in $(seq 1 60); do\n        status=$(curl -fsS -u \"${ADMIN_USER}:${ADMIN_PASS}\"\
-        \ \"${API_URL}/incus/${REPO_KEY}/uploads/$session\" | jq -er '.status')\n        [ \"$status\" != failed ] || { echo\
-        \ 'FAIL: asynchronous Incus upload failed'; return 1; }\n        [ \"$status\" != completed ] || return 0\n      \
-        \  sleep 1\n    done\n    echo 'FAIL: Incus upload timed out'; return 1\n}\n'''\nt=t.replace('WORK_DIR=\"$(mktemp\
-        \ -d)\"',wait+'\\nWORK_DIR=\"$(mktemp -d)\"')\nt=t.replace('if [ \"$HTTP_CODE\" != \"201\" ]; then','if [ \"$HTTP_CODE\"\
-        \ != \"201\" ] && [ \"$HTTP_CODE\" != \"202\" ]; then')\nfor body,marker in [('UPLOAD_RESPONSE','UNIFIED_SHA256='),('META_RESPONSE','echo\
-        \ \"  Uploaded: debian-bookworm/20240301/metadata.tar.gz\"'),('ROOTFS_RESPONSE','ROOTFS_SHA256=')]:\n pos=t.index(marker)\n\
-        \ line='[ \"$HTTP_CODE\" != \"202\" ] || wait_upload \"$(echo \"$'+body+'\" | sed \\'$d\\')\"\\n'\n t=t[:pos]+line+t[pos:]\n\
-        t=t.replace('if [ -n \"$CATALOG_SHA256\" ] &&','if [ -z \"$CATALOG_SHA256\" ] ||')\nt=t.replace('if [ \"$ORIG_SIZE\"\
-        \ != \"$DL_SIZE\" ]; then','if ! cmp -s \"$ROOTFS_FILE\" \"$DOWNLOAD_FILE\" || [ \"$ORIG_SIZE\" != \"$DL_SIZE\" ];\
-        \ then')\np.write_text(t)\nfor n in ('pub','pub-proxy','pub-virtual'):\n p=Path('scripts/native-tests/test-'+n+'.sh');t=p.read_text()\n\
-        \ t=t.replace('HOST_IP=$(ipconfig getifaddr en0 2>/dev/null || echo \"host.docker.internal\")','HOST_IP=host.docker.internal')\n\
-        \ t=t.replace('subjectAltName=IP:$HOST_IP,DNS:localhost','subjectAltName=DNS:host.docker.internal,DNS:localhost,IP:127.0.0.1')\n\
-        \ t=t.replace('proxy_pass http://host.docker.internal:8080;','proxy_pass http://host.docker.internal:18080;')\n t=t.replace('sh\
-        \ -c \"','sh -ec \"')\n if n=='pub':\n  t+='\\n[ \"${DART_EXIT:-1}\" = 0 ] && [ \"${DART_DL_EXIT:-1}\" = 0 ] || exit\
-        \ 1\\n'\n p.write_text(t)\np=Path('scripts/native-tests/test-health-probes.sh');t=p.read_text()\nt=t.replace('if [\
-        \ \"$SETUP_STATUS\" = \"healthy\" ]; then','if [ \"$SETUP_STATUS\" = \"complete\" ]; then')\nt=t.replace('/readyz\
-        \ setup_complete check is healthy','/readyz setup_complete check is complete')\na=t.index('if grep -q \"ak_db_pool_connections\"\
-        ');b=t.index('\\n# ---- Test 17:',a)\nt=t[:a]+'''for _ in $(seq 1 66); do\n    curl -fsS -H \"Authorization: Bearer\
-        \ $TOKEN\" \"$REGISTRY_URL/api/v1/admin/metrics\" > /tmp/metrics.txt\n    if grep -q \"ak_db_pool_connections\" /tmp/metrics.txt;\
-        \ then break; fi\n    sleep 5\ndone\nif grep -q \"ak_db_pool_connections\" /tmp/metrics.txt; then\n    pass \"ak_db_pool_connections\
-        \ gauges present in metrics\"\nelse\n    fail \"ak_db_pool_connections absent after periodic update bound\"\nfi\n\
-        '''+t[b:]\np.write_text(t)\nfor n in ('pub','pub-proxy','pub-virtual'):\n p=Path('scripts/native-tests/test-'+n+'.sh');t=p.read_text()\n\
-        \ # Dart creates files as root in the bind mount. Preserve the real test exit\n # status while returning ownership\
-        \ of only this disposable fixture directory.\n cleanup=\"\"\"cleanup_fixture() {\n    local result=$?\n    docker\
-        \ run --rm -v \"$WORK_DIR:/cleanup\" nginx:alpine chown -R \"$(id -u):$(id -g)\" /cleanup || result=1\n    rm -rf\
-        \ \"$WORK_DIR\" || result=1\n    exit \"$result\"\n}\ntrap cleanup_fixture EXIT\"\"\"\n t=t.replace(\"trap 'rm -rf\
-        \ \\\"$WORK_DIR\\\"' EXIT\",cleanup)\n if n=='pub-virtual':\n  t=t.replace('-F \"file=@/dev/null\"','-F \"file=@$ARCHIVE\"\
-        ')\n  t=t.replace('if [ \"$PUBLISH_STATUS\" = \"405\" ]; then','if [ \"$PUBLISH_STATUS\" = \"400\" ] && echo \"$PUBLISH_RESP\"\
-        \ | grep -Fq \"Cannot publish to a virtual repository\"; then')\n  t=t.replace('Virtual correctly rejects publish\
-        \ (405)','Virtual correctly rejects publish with explicit read-only error (400)')\n  t=t.replace('echo \"  \u26A0\uFE0F\
-        \  Expected 405, got $PUBLISH_STATUS\"','echo \"FAIL: virtual publish rejection was not explicit ($PUBLISH_STATUS)\"\
-        ; exit 1')\n if n=='pub-proxy':\n  t=t.replace('echo \"  \u26A0\uFE0F  Expected 405, got $PUBLISH_STATUS\"','echo\
-        \ \"FAIL: proxy accepted publish or returned unexpected status ($PUBLISH_STATUS)\"; exit 1')\n p.write_text(t)\n\n\
-        HOSTPATCH\n  if [[ \"$PROFILE\" = pub* ]]; then docker pull nginx:alpine >> reports/start.log 2>&1; fi\n  if [ \"\
-        $PROFILE\" = deb-flat-proxy ]; then\n    docker run --rm --network host -e REGISTRY_URL -e ADMIN_USER -e ADMIN_PASS\
-        \ -v \"$PWD/scripts:/scripts:ro\" debian:trixie-slim bash -ec 'apt-get update -qq && apt-get install -y -qq curl ca-certificates\
-        \ gnupg >/dev/null && bash /scripts/native-tests/test-deb-flat-proxy.sh' > reports/test.log 2>&1\n  else\n    timeout\
-        \ 1200 bash \"scripts/native-tests/test-$PROFILE.sh\" > reports/test.log 2>&1\n  fi\n  if grep -Eq 'SKIP:|skipping\
-        \ Dart|Falling back to curl-only' reports/test.log; then echo 'Native profile skipped required work'; exit 1; fi\n\
-        else\n  target=\"${PROFILE}-test\"\n  docker compose -f validation-compose.json up -d --no-build --wait --wait-timeout\
-        \ 180 trivy setup pki > reports/start.log 2>&1\n  cat > bootstrap.py <<'BOOTSTRAP'\nimport json,os,urllib.request,urllib.error\n\
-        base='http://127.0.0.1:18080'\ndef api(method,path,obj=None,token=None):\n h={'Content-Type':'application/json'}\n\
-        \ if token:h['Authorization']='Bearer '+token\n req=urllib.request.Request(base+path,data=json.dumps(obj).encode()\
-        \ if obj else None,headers=h,method=method)\n try:\n  with urllib.request.urlopen(req,timeout=20) as f:return f.status,json.load(f)\n\
-        \ except urllib.error.HTTPError as e:return e.code,e.read().decode()[:160]\ncode,body=api('POST','/api/v1/auth/login',{'username':'admin','password':os.environ['ADMIN_PASS']});assert\
-        \ code==200,code\ntoken=body['access_token']\nif os.environ['PROFILE']=='hex':\n code,body=api('POST','/api/v1/repositories',{'key':'ci-hex','name':'Synthetic\
-        \ Hex fixture','format':'hex','repo_type':'local','is_public':True},token)\n assert 200<=code<300,(code,body)\n code,body=api('GET','/api/v1/repositories/ci-hex',token=token)\n\
-        \ assert code==200 and body['format']=='hex',(code,body)\n print('Verified Hex fixture format and visibility')\nBOOTSTRAP\n\
-        \  python3 bootstrap.py > reports/bootstrap.log 2>&1\n  if [ \"$PROFILE\" = cache-correctness ]; then\n    docker\
-        \ build -t artifact-keeper-mock-upstream:test scripts/native-tests/mock-upstream >> reports/start.log 2>&1\n    target='cache-correctness-test\
-        \ virtual-resolution-test'\n  fi\n  docker compose -f validation-compose.json up -d --no-build $target >> reports/start.log\
-        \ 2>&1\n  containers=\"e2e-test-$PROFILE\"\n  if [ \"$PROFILE\" = cache-correctness ]; then containers='e2e-test-cache-correctness\
-        \ e2e-test-virtual-resolution'; fi\n  failures=0\n  for container in $containers; do\n    timeout 1200 docker wait\
-        \ \"$container\" > \"reports/$container-wait.log\" || failures=1\n    docker logs \"$container\" > \"reports/$container-test.log\"\
-        \ 2>&1\n    state=$(docker inspect --format '{{.State.Status}} {{.State.ExitCode}} {{.State.OOMKilled}}' \"$container\"\
-        )\n    echo \"$container $state\" >> reports/exit-state.txt\n    [ \"$state\" = 'exited 0 false' ] || failures=1\n\
-        \  done\n  [ \"$failures\" = 0 ]\nfi\necho \"PASS: $MODE $PROFILE product=$PRODUCT_SHA\" | tee reports/result.txt\n"
+      run: |
+        set -euo pipefail
+        mkdir -p reports .pki
+        set -a
+        . ./.env.test
+        set +a
+        bash scripts/pki/generate-certs.sh .pki > reports/pki.log 2>&1
+        bash scripts/pki/generate-gpg.sh .pki >> reports/pki.log 2>&1
+        if [ "$PROFILE" = curation ]; then
+          bash scripts/native-tests/prepare-curation-fixture.sh >> reports/pki.log 2>&1
+        fi
+        if [ "$PROFILE" = terraform-mirror ]; then
+          openssl req -x509 -newkey rsa:2048 -nodes -keyout .pki/ca.key -out .pki/ca.crt -days 2 -subj '/CN=Native validation CA' > reports/tls.log 2>&1
+          openssl req -newkey rsa:2048 -nodes -keyout .pki/server.key -out .pki/server.csr -subj '/CN=native.test' >> reports/tls.log 2>&1
+          printf 'subjectAltName=DNS:native.test\nextendedKeyUsage=serverAuth\n' > .pki/ext.cnf
+          openssl x509 -req -in .pki/server.csr -CA .pki/ca.crt -CAkey .pki/ca.key -CAcreateserial -out .pki/server.crt -days 2 -extfile .pki/ext.cnf >> reports/tls.log 2>&1
+          cat > tls.conf <<'NGINX'
+        server { listen 8443 ssl; server_name native.test; ssl_certificate /fixture/server.crt; ssl_certificate_key /fixture/server.key; location / { proxy_pass http://backend:8080; proxy_set_header Host $http_host; proxy_set_header X-Forwarded-Proto https; } }
+        NGINX
+        fi
+        docker compose -f docker-compose.test.yml --profile all --profile "$PROFILE" config --format json > source-compose.json
+        cat > configure.py <<'CONFIG'
+        import json,os
+        from pathlib import Path
+        c=json.loads(Path('source-compose.json').read_text());s=c['services'];b=s['backend'];b.pop('build',None)
+        b['ports']=[{'target':8080,'published':'18080','host_ip':'0.0.0.0','protocol':'tcp'}]
+        for name,v in list(b['networks'].items()):
+         v=v or {};v.setdefault('aliases',[]).append('backend.test');b['networks'][name]=v
+        for name,v in s.items():
+         if name.endswith('-test'):
+          env=v.setdefault('environment',{})
+          for k in ('ADMIN_PASS','ADMIN_PASSWORD','AK_TEST_ADMIN_PASSWORD','REGISTRY_PASS'):env[k]=os.environ['ADMIN_PASS']
+          for k in ('REGISTRY_URL','API_URL','BACKEND_URL'):
+           if k in env:env[k]='http://backend.test:8080'
+        s['hex-test']['environment']['HEX_REPO_KEY']='ci-hex'
+        s['hex-test']['image']='elixir:1.19-alpine'
+        s['protobuf-test']['environment']['REPO_KEY']='ci-protobuf'
+        for name in ('hex','protobuf'):
+         s[name+'-test']['command']=['sh','-c',f'apk add --no-cache bash curl jq tar coreutils python3 openssl perl-utils >/dev/null 2>&1 && bash /scripts/test-{name}.sh']
+        s['conda-test']['environment'].update({'BACKEND_URL':'http://backend.test:8080','AUTH_USER':'admin','AUTH_PASS':os.environ['ADMIN_PASS']})
+        s['conda-test']['command']=['bash','-c','apt-get update -qq && apt-get install -y -qq --no-install-recommends curl jq zip unzip bzip2 zstd openssl >/dev/null && bash /scripts/test-conda.sh']
+        if 'mock-upstream' in s:
+         s['mock-upstream']['healthcheck']['test']=['CMD','wget','-q','--spider','http://127.0.0.1/rpm/repodata/repomd.xml']
+         s['mock-upstream']['networks']={'e2e-test-network':{'aliases':['mock-upstream.test']}}
+         s['curation-test']['environment']['MOCK_UPSTREAM_URL']='http://mock-upstream.test'
+         s['curation-test']['environment']['CURATION_GPG_KEY']='/fixture/gpg-signing.pub'
+         s['curation-test'].setdefault('volumes',[]).append({'type':'bind','source':str(Path('.pki/gpg-signing.pub').resolve()),'target':'/fixture/gpg-signing.pub','read_only':True})
+        if os.environ['PROFILE']=='terraform-mirror':
+         s['tls-fixture']={'image':'nginx:alpine','volumes':[str(Path('.pki').resolve())+':/fixture:ro',str(Path('tls.conf').resolve())+':/etc/nginx/conf.d/default.conf:ro'],'networks':{'e2e-test-network':{'aliases':['native.test']}},'depends_on':{'backend':{'condition':'service_healthy'}}}
+         v=s['terraform-mirror-test'];v['environment'].update({'REGISTRY_URL':'https://native.test:8443','SSL_CERT_FILE':'/fixture/ca.crt','CURL_CA_BUNDLE':'/fixture/ca.crt','RUN_TERRAFORM_CLI':'1'})
+         v.setdefault('volumes',[]).append({'type':'bind','source':str(Path('.pki').resolve()),'target':'/fixture','read_only':True})
+         v.setdefault('depends_on',{})['tls-fixture']={'condition':'service_started'}
+        s['docker-test']['command']=['sh','-c','apk add --no-cache bash curl jq python3 >/dev/null 2>&1 && bash /scripts/test-docker.sh']
+        if os.environ['PROFILE']=='docker':
+         v=s['docker-test'];v.pop('networks',None);v['network_mode']='host';v['environment']['REGISTRY_URL']='localhost:18080'
+        s['maven-test']['environment']['REGISTRY_URL']='http://backend.test:8080/maven/test-maven'
+        if os.environ['PROFILE']=='tag-replication':
+         s['tag-replication-test']['command']=['bash','-c','apt-get update -qq && apt-get install -y -qq curl jq >/dev/null && bash /scripts/test-tag-replication.sh']
+        if os.environ['PROFILE']=='health-probes':b['environment']['EXPOSE_DETAILED_HEALTH']='true'
+        Path('validation-compose.json').write_text(json.dumps(c))
+        CONFIG
+        python3 configure.py
+        python3 - <<'AUDITPATCH'
+        from pathlib import Path
+        p=Path('scripts/native-tests/test-cargo.sh');t=p.read_text()
+        t=t.replace('date +%s | cut -c1-6','date +%s')
+        t=t.replace('mkdir -p ~/.cargo','export CARGO_HOME="${CARGO_HOME:-$HOME/.cargo}"\nmkdir -p "$CARGO_HOME"')
+        t=t.replace('~/.cargo/config.toml','"$CARGO_HOME/config.toml"')
+        t=t.replace('[registry]','credential-provider = "cargo:token"\n\n[registry]')
+        t=t.replace('cargo publish --registry test-registry --allow-dirty --no-verify || echo "Publish may have succeeded with warnings"','cargo publish --registry test-registry --allow-dirty --no-verify')
+        t=t.replace('cargo build || echo "Build attempted"',"""cat > src/main.rs <<'RUST'
+        fn main() { print!("{}", test_crate_native::hello()); }
+        RUST
+        # A fresh package cache proves this consumer fetches the published crate.
+        cp "$CARGO_HOME/config.toml" "$WORK_DIR/registry-config.toml"
+        export CARGO_HOME="$WORK_DIR/fresh-cargo"
+        mkdir -p "$CARGO_HOME"
+        cp "$WORK_DIR/registry-config.toml" "$CARGO_HOME/config.toml"
+        cargo build
+        [ "$(cargo run --offline --quiet)" = 'Hello from test-crate-native!' ]""")
+        p.write_text(t)
+        p=Path('scripts/native-tests/test-docker-proxy.sh');t=p.read_text()
+        t=t.replace('if [ -n "$DOCKERHUB_USER" ] && [ "$ALPINE_RESP" = "200" ]; then','if [ "$ALPINE_RESP" = "200" ]; then')
+        t=t.replace('skip "Docker-Content-Digest header not returned by proxy"','fail "Docker-Content-Digest header not returned by proxy"')
+        for msg in ('Docker Hub auth not configured, skipping manifest content validation','Docker Hub auth not configured, skipping digest header check','Docker Hub auth not configured, skipping cache test'):
+         t=t.replace('skip "'+msg+'"','fail "Anonymous upstream response unavailable for manifest validation"')
+        p.write_text(t)
+        p=Path('scripts/native-tests/test-proxy-virtual.sh');t=p.read_text()
+        a=t.index('# --- Test 2.4:');b=t.index('# --- Test 2.5:',a)
+        t=t[:a]+'echo "  [2.4] PyPI proxy: download the advertised six wheel and verify its digest..."\nif python3 - "$REGISTRY_URL" "$TMPDIR_TEST/pypi-index.html" "$TMPDIR_TEST/pypi-file.whl" <<\'PYPI_WHEEL\'\nfrom html.parser import HTMLParser\nfrom pathlib import Path\nimport hashlib,sys,urllib.request,urllib.parse,zipfile,io\nclass Links(HTMLParser):\n def __init__(self):super().__init__();self.links=[]\n def handle_starttag(self,tag,attrs):\n  if tag==\'a\':self.links.extend(v for k,v in attrs if k==\'href\')\nbase,index,out=sys.argv[1:];p=Links();p.feed(Path(index).read_text())\nhref=next(v for v in p.links if \'six-1.16.0-py2.py3-none-any.whl\' in v)\nurl=urllib.parse.urljoin(base+\'/pypi/pypi-proxy/simple/six/\',href)\nassert urllib.parse.urlparse(url).netloc==urllib.parse.urlparse(base).netloc,\'download escaped backend\'\nurl,fragment=urllib.parse.urldefrag(url)\nwith urllib.request.urlopen(url,timeout=60) as f:body=f.read()\nassert fragment.startswith(\'sha256=\') and hashlib.sha256(body).hexdigest()==fragment[7:]\nwith zipfile.ZipFile(io.BytesIO(body)) as z:assert z.testzip() is None and \'six.py\' in z.namelist()\nPath(out).write_bytes(body)\nPYPI_WHEEL\nthen pass "PyPI advertised wheel fetched through backend with matching SHA-256"\nelse fail "PyPI advertised wheel download or digest validation failed"\nfi\n\n'+t[b:]
+        p.write_text(t)
+
+        AUDITPATCH
+        cat > strict-native.py <<'STRICT'
+        import os,json,time,hashlib,urllib.request,urllib.error,subprocess,tempfile,pathlib,zipfile,io
+        BASE='http://127.0.0.1:18080';TOKEN=None;ROOT=pathlib.Path.cwd();PROFILE=os.environ['PROFILE']
+        def api(method,path,data=None,headers=None):
+         h=dict(headers or {})
+         if TOKEN:h['Authorization']='Bearer '+TOKEN
+         if isinstance(data,dict):data=json.dumps(data).encode();h['Content-Type']='application/json'
+         r=urllib.request.Request(BASE+path,data=data,headers=h,method=method)
+         try:
+          with urllib.request.urlopen(r,timeout=30) as f:return f.status,f.read()
+         except urllib.error.HTTPError as e:return e.code,e.read()
+        def ok(method,path,data=None,headers=None):
+         code,body=api(method,path,data,headers)
+         assert 200<=code<300,(method,path,code,body[:180])
+         return body
+        def cmd(args,**kw):
+         r=subprocess.run(args,text=True,capture_output=True,**kw)
+         if r.returncode:
+          print(r.stdout[-4000:],flush=True);print(r.stderr[-4000:],flush=True)
+          raise RuntimeError('native command failed: '+args[0]+' exit='+str(r.returncode))
+         return r.stdout
+        for _ in range(90):
+         try:
+          if api('GET','/health')[0]==200:break
+         except OSError:pass
+         time.sleep(1)
+        else:raise AssertionError('backend readiness timed out')
+        TOKEN=json.loads(ok('POST','/api/v1/auth/login',{'username':'admin','password':os.environ['ADMIN_PASS']}))['access_token']
+        key='strict-'+PROFILE
+        fmt={'deb':'debian','rpm':'rpm','go':'go','helm':'helm'}[PROFILE]
+        ok('POST','/api/v1/repositories',{'key':key,'name':'Synthetic '+PROFILE,'format':fmt,'repo_type':'local','is_public':True})
+        with tempfile.TemporaryDirectory() as td:
+         d=pathlib.Path(td);d.chmod(0o755)
+         if PROFILE=='go':
+          module='example.com/ca-native-fixture';version='v1.0.0'
+          gomod=b'module example.com/ca-native-fixture\n\ngo 1.20\n'
+          source=b'package fixture\nfunc Message() string { return "ca-native-fixture" }\n'
+          buf=io.BytesIO()
+          with zipfile.ZipFile(buf,'w') as z:
+           z.writestr(module+'@'+version+'/go.mod',gomod);z.writestr(module+'@'+version+'/fixture.go',source)
+          path='/go/'+key+'/'+module+'/@v/'+version
+          ok('PUT',path+'.mod',gomod);ok('PUT',path+'.zip',buf.getvalue())
+          assert ok('GET',path+'.zip')==buf.getvalue()
+          assert json.loads(ok('GET',path+'.info'))['Version']==version
+          (d/'go.mod').write_text('module consumer.example\n\ngo 1.20\n')
+          (d/'main.go').write_text('package main\nimport ("fmt"; f "example.com/ca-native-fixture")\nfunc main(){fmt.Print(f.Message())}\n')
+          env=dict(os.environ,GOPROXY=BASE+'/go/'+key,GOSUMDB='off',GOPRIVATE='',GONOPROXY='',GOMODCACHE=str(d/'cache'),GOWORK='off')
+          cmd(['go','get',module+'@'+version],cwd=d,env=env)
+          assert cmd(['go','run','.'],cwd=d,env=env)=='ca-native-fixture'
+          print('PASS: strict Go upload, proxy download and compiled native consumer')
+         elif PROFILE=='helm':
+          chart=d/'ca-native-chart';(chart/'templates').mkdir(parents=True)
+          (chart/'Chart.yaml').write_text('apiVersion: v2\nname: ca-native-chart\nversion: 1.0.0\n')
+          (chart/'templates'/'config.yaml').write_text('apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: fixture\n')
+          cmd(['helm','package',str(chart),'--destination',str(d)])
+          package=d/'ca-native-chart-1.0.0.tgz'
+          cmd(['curl','-fsS','-H','Authorization: Bearer '+TOKEN,'-F','chart=@'+str(package),BASE+'/helm/'+key+'/api/charts'])
+          env=dict(os.environ,HELM_CONFIG_HOME=str(d/'config'),HELM_CACHE_HOME=str(d/'cache'),HELM_DATA_HOME=str(d/'data'))
+          cmd(['helm','repo','add','fixture',BASE+'/helm/'+key],env=env)
+          cmd(['helm','repo','update'],env=env)
+          (d/'download').mkdir();cmd(['helm','pull','fixture/ca-native-chart','--version','1.0.0','--destination',str(d/'download')],env=env)
+          assert (d/'download'/package.name).read_bytes()==package.read_bytes()
+          assert 'version: 1.0.0' in cmd(['helm','show','chart',str(d/'download'/package.name)],env=env)
+          print('PASS: strict Helm package, ChartMuseum upload, native index/pull and byte equality')
+         elif PROFILE=='rpm':
+          p=ROOT/'backend/tests/fixtures/ak-meta-test-1.0-1.noarch.rpm'
+          ok('PUT','/rpm/'+key+'/packages/'+p.name,p.read_bytes(),{'Content-Type':'application/x-rpm'})
+          assert ok('GET','/rpm/'+key+'/packages/'+p.name)==p.read_bytes()
+          for _ in range(60):
+           c,b=api('GET','/rpm/'+key+'/repodata/repomd.xml')
+           if c==200 and b'repomd' in b:break
+           time.sleep(1)
+          else:raise AssertionError('RPM repodata unavailable')
+          network=json.loads(cmd(['docker','inspect','e2e-test-backend']))[0]['NetworkSettings']['Networks']
+          net=next(iter(network))
+          script='set -e; dnf -q -y install --allowerasing dnf-plugins-core >/dev/null; dnf -q --repofrompath=fixture,http://backend.test:8080/rpm/'+key+' --disablerepo="*" --enablerepo=fixture --setopt=fixture.gpgcheck=0 repoquery --qf "%{name}-%{version}" | grep -Fx ak-meta-test-1.0'
+          output=cmd(['docker','run','--rm','--network',net,'rockylinux/rockylinux:9','bash','-c',script]);assert 'ak-meta-test-1.0' in output
+          print('PASS: strict RPM fixture upload/download, repodata and native DNF repoquery (unsigned test fixture)')
+         elif PROFILE=='deb':
+          pkg=d/'pkg';(pkg/'DEBIAN').mkdir(parents=True);(pkg/'usr/share/ca-native-deb').mkdir(parents=True)
+          (pkg/'DEBIAN/control').write_text('Package: ca-native-deb\nVersion: 1.0.0\nArchitecture: all\nMaintainer: Test <test@example.com>\nDescription: synthetic validation package\n')
+          (pkg/'usr/share/ca-native-deb/data').write_text('synthetic fixture\n')
+          package=d/'ca-native-deb_1.0.0_all.deb';cmd(['dpkg-deb','--build','--root-owner-group',str(pkg),str(package)])
+          path='/debian/'+key+'/pool/main/c/ca-native-deb/'+package.name
+          ok('PUT',path,package.read_bytes(),{'Content-Type':'application/vnd.debian.binary-package'})
+          assert ok('GET',path)==package.read_bytes()
+          lists=d/'lists';(lists/'partial').mkdir(parents=True);cache=d/'apt-cache';(cache/'archives/partial').mkdir(parents=True)
+          sources=d/'sources.list';sources.write_text('deb [trusted=yes] '+BASE+'/debian/'+key+' stable main\n')
+          parts=d/'parts';parts.mkdir()
+          opts=['-o','Dir::Etc::sourcelist='+str(sources),'-o','Dir::Etc::sourceparts='+str(parts),'-o','Dir::State::lists='+str(lists),'-o','Dir::Cache='+str(cache),'-o','APT::Get::List-Cleanup=0']
+          cmd(['apt-get',*opts,'update']);(d/'download').mkdir();cmd(['apt-get',*opts,'download','ca-native-deb=1.0.0'],cwd=d/'download')
+          assert (d/'download'/package.name).read_bytes()==package.read_bytes()
+          print('PASS: strict DEB build/upload, native APT metadata/download and byte equality (unsigned test fixture)')
+        STRICT
+        if [[ "$PROFILE" =~ ^(go|helm|rpm|deb)$ ]]; then
+          docker compose -f validation-compose.json up -d --no-build --wait --wait-timeout 180 postgres backend > reports/start.log 2>&1
+          if [ "$PROFILE" = helm ]; then
+            curl -fsSL https://get.helm.sh/helm-v3.17.4-linux-amd64.tar.gz -o /tmp/native-helm.tgz
+            tar -xzf /tmp/native-helm.tgz -C /tmp
+            export PATH=/tmp/linux-amd64:$PATH
+          fi
+          timeout 720 python3 strict-native.py > reports/test.log 2>&1
+        elif [[ "$PROFILE" =~ ^(deb-flat-proxy|incus|pacman|pub|pub-proxy|pub-virtual|health-probes)$ ]]; then
+          docker compose -f validation-compose.json up -d --no-build --wait --wait-timeout 180 trivy setup pki > reports/start.log 2>&1
+          export REGISTRY_URL=http://127.0.0.1:18080 API_URL=http://127.0.0.1:18080 CONTAINER_RUNTIME=docker
+          # Repair Linux fixture addressing and current repository API vocabulary only.
+          python3 - <<'HOSTPATCH'
+        from pathlib import Path
+        p=Path('scripts/native-tests/test-incus.sh')
+        t=p.read_text().replace(r'\"hosted\"',r'\"local\"')
+        wait='''
+        wait_upload() {
+            local body="$1" session status
+            session=$(printf '%s' "$body" | jq -er '.session_id')
+            for _ in $(seq 1 60); do
+                status=$(curl -fsS -u "${ADMIN_USER}:${ADMIN_PASS}" "${API_URL}/incus/${REPO_KEY}/uploads/$session" | jq -er '.status')
+                [ "$status" != failed ] || { echo 'FAIL: asynchronous Incus upload failed'; return 1; }
+                [ "$status" != completed ] || return 0
+                sleep 1
+            done
+            echo 'FAIL: Incus upload timed out'; return 1
+        }
+        '''
+        t=t.replace('WORK_DIR="$(mktemp -d)"',wait+'\nWORK_DIR="$(mktemp -d)"')
+        t=t.replace('if [ "$HTTP_CODE" != "201" ]; then','if [ "$HTTP_CODE" != "201" ] && [ "$HTTP_CODE" != "202" ]; then')
+        for body,marker in [('UPLOAD_RESPONSE','UNIFIED_SHA256='),('META_RESPONSE','echo "  Uploaded: debian-bookworm/20240301/metadata.tar.gz"'),('ROOTFS_RESPONSE','ROOTFS_SHA256=')]:
+         pos=t.index(marker)
+         line='[ "$HTTP_CODE" != "202" ] || wait_upload "$(echo "$'+body+'" | sed \'$d\')"\n'
+         t=t[:pos]+line+t[pos:]
+        t=t.replace('incus.tar.xz"].sha256 // empty','incus.tar.gz"].sha256 // empty')
+        t=t.replace('if [ -n "$CATALOG_SHA256" ] &&','if [ -z "$CATALOG_SHA256" ] ||')
+        t=t.replace('if [ "$ORIG_SIZE" != "$DL_SIZE" ]; then','if ! cmp -s "$ROOTFS_FILE" "$DOWNLOAD_FILE" || [ "$ORIG_SIZE" != "$DL_SIZE" ]; then')
+        p.write_text(t)
+        for n in ('pub','pub-proxy','pub-virtual'):
+         p=Path('scripts/native-tests/test-'+n+'.sh');t=p.read_text()
+         t=t.replace('HOST_IP=$(ipconfig getifaddr en0 2>/dev/null || echo "host.docker.internal")','HOST_IP=host.docker.internal')
+         t=t.replace('subjectAltName=IP:$HOST_IP,DNS:localhost','subjectAltName=DNS:host.docker.internal,DNS:localhost,IP:127.0.0.1')
+         t=t.replace('proxy_pass http://host.docker.internal:8080;','proxy_pass http://host.docker.internal:18080;')
+         t=t.replace('sh -c "','sh -ec "')
+         if n=='pub':
+          t+='\n[ "${DART_EXIT:-1}" = 0 ] && [ "${DART_DL_EXIT:-1}" = 0 ] || exit 1\n'
+         p.write_text(t)
+        p=Path('scripts/native-tests/test-health-probes.sh');t=p.read_text()
+        t=t.replace('if [ "$SETUP_STATUS" = "healthy" ]; then','if [ "$SETUP_STATUS" = "complete" ]; then')
+        t=t.replace('/readyz setup_complete check is healthy','/readyz setup_complete check is complete')
+        a=t.index('if grep -q "ak_db_pool_connections"');b=t.index('\n# ---- Test 17:',a)
+        t=t[:a]+'''for _ in $(seq 1 66); do
+            curl -fsS -H "Authorization: Bearer $TOKEN" "$REGISTRY_URL/api/v1/admin/metrics" > /tmp/metrics.txt
+            if grep -q "ak_db_pool_connections" /tmp/metrics.txt; then break; fi
+            sleep 5
+        done
+        if grep -q "ak_db_pool_connections" /tmp/metrics.txt; then
+            pass "ak_db_pool_connections gauges present in metrics"
+        else
+            fail "ak_db_pool_connections absent after periodic update bound"
+        fi
+        '''+t[b:]
+        p.write_text(t)
+        HOSTPATCH
+          if [[ "$PROFILE" = pub* ]]; then docker pull nginx:alpine >> reports/start.log 2>&1; fi
+          if [ "$PROFILE" = deb-flat-proxy ]; then
+            docker run --rm --network host -e REGISTRY_URL -e ADMIN_USER -e ADMIN_PASS -v "$PWD/scripts:/scripts:ro" debian:trixie-slim bash -ec 'apt-get update -qq && apt-get install -y -qq curl ca-certificates gnupg >/dev/null && bash /scripts/native-tests/test-deb-flat-proxy.sh' > reports/test.log 2>&1
+          else
+            timeout 1200 bash "scripts/native-tests/test-$PROFILE.sh" > reports/test.log 2>&1
+          fi
+          if grep -Eq 'SKIP:|skipping Dart|Falling back to curl-only' reports/test.log; then echo 'Native profile skipped required work'; exit 1; fi
+        else
+          target="${PROFILE}-test"
+          docker compose -f validation-compose.json up -d --no-build --wait --wait-timeout 180 trivy setup pki > reports/start.log 2>&1
+          cat > bootstrap.py <<'BOOTSTRAP'
+        import json,os,urllib.request,urllib.error
+        base='http://127.0.0.1:18080'
+        def api(method,path,obj=None,token=None):
+         h={'Content-Type':'application/json'}
+         if token:h['Authorization']='Bearer '+token
+         req=urllib.request.Request(base+path,data=json.dumps(obj).encode() if obj else None,headers=h,method=method)
+         try:
+          with urllib.request.urlopen(req,timeout=20) as f:return f.status,json.load(f)
+         except urllib.error.HTTPError as e:return e.code,e.read().decode()[:160]
+        code,body=api('POST','/api/v1/auth/login',{'username':'admin','password':os.environ['ADMIN_PASS']});assert code==200,code
+        token=body['access_token']
+        if os.environ['PROFILE']=='hex':
+         code,body=api('POST','/api/v1/repositories',{'key':'ci-hex','name':'Synthetic Hex fixture','format':'hex','repo_type':'local','is_public':True},token)
+         assert 200<=code<300,(code,body)
+         code,body=api('GET','/api/v1/repositories/ci-hex',token=token)
+         assert code==200 and body['format']=='hex',(code,body)
+         print('Verified Hex fixture format and visibility')
+        BOOTSTRAP
+          python3 bootstrap.py > reports/bootstrap.log 2>&1
+          if [ "$PROFILE" = cache-correctness ]; then
+            docker build -t artifact-keeper-mock-upstream:test scripts/native-tests/mock-upstream >> reports/start.log 2>&1
+            target='cache-correctness-test virtual-resolution-test'
+          fi
+          docker compose -f validation-compose.json up -d --no-build $target >> reports/start.log 2>&1
+          containers="e2e-test-$PROFILE"
+          if [ "$PROFILE" = cache-correctness ]; then containers='e2e-test-cache-correctness e2e-test-virtual-resolution'; fi
+          failures=0
+          for container in $containers; do
+            timeout 1200 docker wait "$container" > "reports/$container-wait.log" || failures=1
+            docker logs "$container" > "reports/$container-test.log" 2>&1
+            state=$(docker inspect --format '{{.State.Status}} {{.State.ExitCode}} {{.State.OOMKilled}}' "$container")
+            echo "$container $state" >> reports/exit-state.txt
+            [ "$state" = 'exited 0 false' ] || failures=1
+          done
+          [ "$failures" = 0 ]
+        fi
+        echo "PASS: $MODE $PROFILE product=$PRODUCT_SHA" | tee reports/result.txt
     - name: Collect diagnostic output
       if: always()
       run: |
@@ -463,7 +611,7 @@ jobs:
       if: always()
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
-        name: native-followup-945c542-${{ matrix.profile }}
+        name: native-strict-945c542-${{ matrix.profile }}
         path: reports
         retention-days: 7
     - name: Clean isolated stack
