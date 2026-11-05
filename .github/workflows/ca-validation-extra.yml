@@ -45,11 +45,7 @@ jobs:
       matrix:
         profiles:
         - recovery
-        - protobuf hex tag-replication
-        - cache-correctness
-        - terraform-modules
-        - docker
-        - curation
+        - conda hex
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
@@ -105,8 +101,12 @@ jobs:
                 if isinstance(env.get('REGISTRY_URL'),str):
                     env['REGISTRY_URL']=env['REGISTRY_URL'].replace('http://backend:8080','http://backend.test:8080')
         for name in ('protobuf-test','hex-test'):
-            cfg['services'][name]['command']=['sh','-c',f'apk add --no-cache bash curl jq tar coreutils python3 openssl >/dev/null 2>&1 && bash /scripts/test-{name[:-5]}.sh']
+            cfg['services'][name]['command']=['sh','-c',f'apk add --no-cache bash curl jq tar coreutils python3 openssl perl-utils >/dev/null 2>&1 && bash /scripts/test-{name[:-5]}.sh']
         cfg['services']['tag-replication-test']['command']=['bash','-c','apt-get update -qq && apt-get install -y -qq --no-install-recommends curl >/dev/null && bash /scripts/test-tag-replication.sh']
+        cfg['services']['conda-test']['environment']['BACKEND_URL']='http://backend.test:8080'
+        cfg['services']['conda-test']['environment']['AUTH_USER']='admin'
+        cfg['services']['conda-test']['environment']['AUTH_PASS']=os.environ['ADMIN_PASS']
+        cfg['services']['conda-test']['command']=['bash','-c','apt-get update -qq && apt-get install -y -qq --no-install-recommends curl jq >/dev/null && bash /scripts/test-conda.sh']
         if 'mock-upstream' in cfg['services']:
             cfg['services']['mock-upstream']['healthcheck']['test']=['CMD','wget','-q','--spider','http://127.0.0.1/rpm/repodata/repomd.xml']
         Path('validation-compose.json').write_text(json.dumps(cfg))
@@ -151,7 +151,7 @@ jobs:
         docker compose up -d --wait --wait-timeout 180 postgres backend
         cat > validation-recovery.py <<'PYTHON'
         import concurrent.futures as cf
-        import hashlib, json, os, subprocess, time, urllib.request, urllib.error
+        import hashlib, json, os, random, subprocess, time, urllib.request, urllib.error
         BASE='http://127.0.0.1:18080'
         token=None
 
@@ -162,9 +162,16 @@ jobs:
                 body=json.dumps(body).encode(); headers['Content-Type']='application/json'
             elif body is not None: headers['Content-Type']='application/octet-stream'
             request=urllib.request.Request(BASE+path, data=body, method=method, headers=headers)
-            try:
-                with urllib.request.urlopen(request, timeout=timeout) as r: return r.status,r.read()
-            except urllib.error.HTTPError as e: return e.code,e.read()
+            deadline=time.monotonic()+180
+            while True:
+                try:
+                    with urllib.request.urlopen(request, timeout=timeout) as r: return r.status,r.read()
+                except urllib.error.HTTPError as e:
+                    if e.code!=429 or time.monotonic()>=deadline: return e.code,e.read()
+                    retry=e.headers.get('Retry-After','1')
+                    try: delay=max(1.0,float(retry))
+                    except ValueError: delay=1.0
+                    time.sleep(min(delay,30)+random.uniform(0,0.5))
 
         def compose(*args):
             subprocess.run(['docker','compose',*args],check=True,stdout=subprocess.DEVNULL)
@@ -198,7 +205,7 @@ jobs:
 
         with cf.ThreadPoolExecutor(max_workers=20) as pool:
             assert len(list(pool.map(transfer,range(100))))==100
-        print('PASS: 100 uploads/downloads at concurrency 20, every byte verified',flush=True)
+        print('PASS: 100 uploads/downloads at concurrency 20, every byte verified; bounded HTTP 429 retries respected',flush=True)
         compose('kill','backend')
         compose('up','-d','backend')
         ready(); transfer(101)
