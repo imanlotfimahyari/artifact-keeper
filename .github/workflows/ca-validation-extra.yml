@@ -1,4 +1,4 @@
-name: PR 5194 extended validation
+name: PR 5194 remaining native tests
 'on':
   push:
     branches:
@@ -10,259 +10,455 @@ permissions:
   contents: read
   actions: read
 concurrency:
-  group: ca-5194-extended-${{ github.run_id }}
+  group: ca-5194-native-${{ github.run_id }}
   cancel-in-progress: false
 jobs:
-  image:
-    name: Wait for exact-head CI image
+  native:
+    name: ${{ matrix.mode }} / ${{ matrix.profile }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 50
-    steps:
-    - name: Verify source and wait for image
-      env:
-        GH_TOKEN: ${{ github.token }}
-      run: |
-        set -euo pipefail
-        expected="7f7345abb9998e74d3c4c80ba1da86e80ebb01a0"
-        actual=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/42022451713" --jq .head_sha)
-        [ "$actual" = "$expected" ]
-        for attempt in $(seq 1 90); do
-          count=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/42022451713/artifacts" --jq '[.artifacts[] | select(.name == "backend-image" and .expired == false)] | length')
-          if [ "$count" = 1 ]; then echo "Verified backend image artifact for $expected"; exit 0; fi
-          status=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/42022451713" --jq .status)
-          [ "$status" != completed ] || { echo 'CI finished without backend image'; exit 1; }
-          sleep 30
-        done
-        echo 'Timed out waiting for the exact-head image'; exit 1
-  extended:
-    name: Extended (${{ matrix.profiles }})
-    needs: image
-    runs-on: ubuntu-24.04
-    timeout-minutes: 50
+    timeout-minutes: 18
     strategy:
       fail-fast: false
-      max-parallel: 6
+      max-parallel: 18
       matrix:
-        profiles:
-        - maven
-        - conda
-        - hex
+        include:
+        - mode: pr
+          profile: go
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42022451713
+          product_sha: 7f7345abb9998e74d3c4c80ba1da86e80ebb01a0
+        - mode: pr
+          profile: helm
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42022451713
+          product_sha: 7f7345abb9998e74d3c4c80ba1da86e80ebb01a0
+        - mode: pr
+          profile: rpm
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42022451713
+          product_sha: 7f7345abb9998e74d3c4c80ba1da86e80ebb01a0
+        - mode: pr
+          profile: deb
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42022451713
+          product_sha: 7f7345abb9998e74d3c4c80ba1da86e80ebb01a0
+        - mode: pr
+          profile: conda
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42022451713
+          product_sha: 7f7345abb9998e74d3c4c80ba1da86e80ebb01a0
+        - mode: pr
+          profile: hex
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42022451713
+          product_sha: 7f7345abb9998e74d3c4c80ba1da86e80ebb01a0
+        - mode: pr
+          profile: protobuf
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42022451713
+          product_sha: 7f7345abb9998e74d3c4c80ba1da86e80ebb01a0
+        - mode: pr
+          profile: terraform-mirror
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42022451713
+          product_sha: 7f7345abb9998e74d3c4c80ba1da86e80ebb01a0
+        - mode: pr
+          profile: curation
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42022451713
+          product_sha: 7f7345abb9998e74d3c4c80ba1da86e80ebb01a0
+        - mode: base
+          profile: go
+          image_repo: artifact-keeper/artifact-keeper
+          image_run: 41984326775
+          product_sha: 61c9d9db51f81c37d20b545ad9febf061aff3a65
+        - mode: base
+          profile: helm
+          image_repo: artifact-keeper/artifact-keeper
+          image_run: 41984326775
+          product_sha: 61c9d9db51f81c37d20b545ad9febf061aff3a65
+        - mode: base
+          profile: rpm
+          image_repo: artifact-keeper/artifact-keeper
+          image_run: 41984326775
+          product_sha: 61c9d9db51f81c37d20b545ad9febf061aff3a65
+        - mode: base
+          profile: deb
+          image_repo: artifact-keeper/artifact-keeper
+          image_run: 41984326775
+          product_sha: 61c9d9db51f81c37d20b545ad9febf061aff3a65
+        - mode: base
+          profile: conda
+          image_repo: artifact-keeper/artifact-keeper
+          image_run: 41984326775
+          product_sha: 61c9d9db51f81c37d20b545ad9febf061aff3a65
+        - mode: base
+          profile: hex
+          image_repo: artifact-keeper/artifact-keeper
+          image_run: 41984326775
+          product_sha: 61c9d9db51f81c37d20b545ad9febf061aff3a65
+        - mode: base
+          profile: protobuf
+          image_repo: artifact-keeper/artifact-keeper
+          image_run: 41984326775
+          product_sha: 61c9d9db51f81c37d20b545ad9febf061aff3a65
+        - mode: base
+          profile: terraform-mirror
+          image_repo: artifact-keeper/artifact-keeper
+          image_run: 41984326775
+          product_sha: 61c9d9db51f81c37d20b545ad9febf061aff3a65
+        - mode: base
+          profile: curation
+          image_repo: artifact-keeper/artifact-keeper
+          image_run: 41984326775
+          product_sha: 61c9d9db51f81c37d20b545ad9febf061aff3a65
+    env:
+      PROFILE: ${{ matrix.profile }}
+      MODE: ${{ matrix.mode }}
+      PRODUCT_SHA: ${{ matrix.product_sha }}
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         ref: 7f7345abb9998e74d3c4c80ba1da86e80ebb01a0
         persist-credentials: false
-    - name: Download exact-head backend image
+    - name: Verify exact product source
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        actual=$(gh api "repos/${{ matrix.image_repo }}/actions/runs/${{ matrix.image_run }}" --jq .head_sha)
+        test "$actual" = "$PRODUCT_SHA"
+    - name: Download exact-source CI image
       uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
       with:
+        repository: ${{ matrix.image_repo }}
+        run-id: ${{ matrix.image_run }}
         name: backend-image
-        run-id: 42022451713
         github-token: ${{ github.token }}
-    - name: Load tested image
+    - name: Load verified image
       run: |
         docker load < backend-image.tar.gz
         docker tag artifact-keeper-backend:pr-test artifact-keeper-backend:test
-    - name: Native client suites, inspect every exit status
-      if: matrix.profiles != 'recovery'
-      env:
-        PROFILES: ${{ matrix.profiles }}
+    - name: Run strict native validation
       run: |
         set -euo pipefail
-        mkdir -p validation-reports
+        mkdir -p reports .pki
         set -a
         . ./.env.test
         set +a
-        bash scripts/pki/generate-certs.sh .pki > validation-reports/pki.log 2>&1
-        bash scripts/pki/generate-gpg.sh .pki >> validation-reports/pki.log 2>&1
-        failed=0
-        for profile in $PROFILES; do
-          targets="${profile}-test"
-          containers="e2e-test-${profile}"
-          if [ "$profile" = cache-correctness ]; then
-            targets="cache-correctness-test virtual-resolution-test"
-            containers="e2e-test-cache-correctness e2e-test-virtual-resolution"
-          fi
-          docker compose -f docker-compose.test.yml --profile all --profile "$profile" config --format json > validation-base.json
-          PROFILE="$profile" python3 - <<'CONFIG'
+        bash scripts/pki/generate-certs.sh .pki > reports/pki.log 2>&1
+        bash scripts/pki/generate-gpg.sh .pki >> reports/pki.log 2>&1
+        if [ "$PROFILE" = terraform-mirror ]; then
+          openssl req -x509 -newkey rsa:2048 -nodes -keyout .pki/ca.key -out .pki/ca.crt -days 2 -subj '/CN=Native validation CA' > reports/tls.log 2>&1
+          openssl req -newkey rsa:2048 -nodes -keyout .pki/server.key -out .pki/server.csr -subj '/CN=native.test' >> reports/tls.log 2>&1
+          printf 'subjectAltName=DNS:native.test\nextendedKeyUsage=serverAuth\n' > .pki/ext.cnf
+          openssl x509 -req -in .pki/server.csr -CA .pki/ca.crt -CAkey .pki/ca.key -CAcreateserial -out .pki/server.crt -days 2 -extfile .pki/ext.cnf >> reports/tls.log 2>&1
+          cat > tls.conf <<'NGINX'
+        server { listen 8443 ssl; server_name native.test; ssl_certificate /fixture/server.crt; ssl_certificate_key /fixture/server.key; location / { proxy_pass http://backend:8080; proxy_set_header Host $http_host; proxy_set_header X-Forwarded-Proto https; } }
+        NGINX
+        fi
+        docker compose -f docker-compose.test.yml --profile all --profile "$PROFILE" config --format json > source-compose.json
+        cat > configure.py <<'CONFIG'
         import json,os
         from pathlib import Path
-        cfg=json.loads(Path('validation-base.json').read_text())
-        backend=cfg['services']['backend']
-        backend.pop('build',None)
-        backend['ports']=[{'target':8080,'published':'18080','host_ip':'127.0.0.1','protocol':'tcp'}]
-        for name,net in list(backend['networks'].items()):
-            if not isinstance(net,dict): net={}
-            net.setdefault('aliases',[]).append('backend.test')
-            backend['networks'][name]=net
-        for name,svc in cfg['services'].items():
-            if name.endswith('-test'):
-                env=svc.setdefault('environment',{})
-                for key in ('ADMIN_PASS','ADMIN_PASSWORD','AK_TEST_ADMIN_PASSWORD'):
-                    env[key]=os.environ[key]
-                if isinstance(env.get('REGISTRY_URL'),str):
-                    env['REGISTRY_URL']=env['REGISTRY_URL'].replace('http://backend:8080','http://backend.test:8080')
-        for name in ('protobuf-test','hex-test'):
-            cfg['services'][name]['command']=['sh','-c',f'apk add --no-cache bash curl jq tar coreutils python3 openssl perl-utils >/dev/null 2>&1 && bash /scripts/test-{name[:-5]}.sh']
-        cfg['services']['tag-replication-test']['command']=['bash','-c','apt-get update -qq && apt-get install -y -qq --no-install-recommends curl >/dev/null && bash /scripts/test-tag-replication.sh']
-        cfg['services']['conda-test']['environment']['BACKEND_URL']='http://backend.test:8080'
-        cfg['services']['conda-test']['environment']['AUTH_USER']='admin'
-        cfg['services']['conda-test']['environment']['AUTH_PASS']=os.environ['ADMIN_PASS']
-        cfg['services']['conda-test']['command']=['bash','-c','apt-get update -qq && apt-get install -y -qq --no-install-recommends curl jq zip unzip bzip2 zstd >/dev/null && bash /scripts/test-conda.sh']
-        cfg['services']['maven-test']['environment']['REGISTRY_URL']='http://backend.test:8080/maven/test-maven'
-        cfg['services']['maven-test']['environment']['REGISTRY_USER']='admin'
-        cfg['services']['maven-test']['environment']['REGISTRY_PASS']=os.environ['ADMIN_PASS']
-        if 'mock-upstream' in cfg['services']:
-            cfg['services']['mock-upstream']['healthcheck']['test']=['CMD','wget','-q','--spider','http://127.0.0.1/rpm/repodata/repomd.xml']
-        Path('validation-compose.json').write_text(json.dumps(cfg))
+        c=json.loads(Path('source-compose.json').read_text());s=c['services'];b=s['backend'];b.pop('build',None)
+        b['ports']=[{'target':8080,'published':'18080','host_ip':'127.0.0.1','protocol':'tcp'}]
+        for name,v in list(b['networks'].items()):
+         v=v or {};v.setdefault('aliases',[]).append('backend.test');b['networks'][name]=v
+        for name,v in s.items():
+         if name.endswith('-test'):
+          env=v.setdefault('environment',{})
+          for k in ('ADMIN_PASS','ADMIN_PASSWORD','AK_TEST_ADMIN_PASSWORD'):env[k]=os.environ[k]
+          if 'REGISTRY_URL' in env:env['REGISTRY_URL']='http://backend.test:8080'
+        s['hex-test']['environment']['HEX_REPO_KEY']='ci-hex'
+        s['protobuf-test']['environment']['REPO_KEY']='ci-protobuf'
+        for name in ('hex','protobuf'):
+         s[name+'-test']['command']=['sh','-c',f'apk add --no-cache bash curl jq tar coreutils python3 openssl perl-utils >/dev/null 2>&1 && bash /scripts/test-{name}.sh']
+        s['conda-test']['environment'].update({'BACKEND_URL':'http://backend.test:8080','AUTH_USER':'admin','AUTH_PASS':os.environ['ADMIN_PASS']})
+        s['conda-test']['command']=['bash','-c','apt-get update -qq && apt-get install -y -qq --no-install-recommends curl jq zip unzip bzip2 zstd openssl >/dev/null && bash /scripts/test-conda.sh']
+        if 'mock-upstream' in s:
+         s['mock-upstream']['healthcheck']['test']=['CMD','wget','-q','--spider','http://127.0.0.1/rpm/repodata/repomd.xml']
+         s['mock-upstream']['networks']={'e2e-test-network':{'aliases':['mock-upstream.test']}}
+         s['curation-test']['environment']['MOCK_UPSTREAM_URL']='http://mock-upstream.test'
+        if os.environ['PROFILE']=='terraform-mirror':
+         s['tls-fixture']={'image':'nginx:alpine','volumes':[str(Path('.pki').resolve())+':/fixture:ro',str(Path('tls.conf').resolve())+':/etc/nginx/conf.d/default.conf:ro'],'networks':{'e2e-test-network':{'aliases':['native.test']}},'depends_on':{'backend':{'condition':'service_healthy'}}}
+         v=s['terraform-mirror-test'];v['environment'].update({'REGISTRY_URL':'https://native.test:8443','SSL_CERT_FILE':'/fixture/ca.crt','CURL_CA_BUNDLE':'/fixture/ca.crt','RUN_TERRAFORM_CLI':'1'})
+         v.setdefault('volumes',[]).append({'type':'bind','source':str(Path('.pki').resolve()),'target':'/fixture','read_only':True})
+         v.setdefault('depends_on',{})['tls-fixture']={'condition':'service_started'}
+        Path('validation-compose.json').write_text(json.dumps(c))
         CONFIG
-          if [ "$profile" = hex ]; then
-            docker compose -f validation-compose.json up -d --no-build --wait --wait-timeout 180 setup > validation-reports/hex-fixture-start.log 2>&1
-            python3 - <<'HEXFIXTURE'
-        import json,os,urllib.request
+        python3 configure.py
+        cat > strict-native.py <<'STRICT'
+        import os,json,time,hashlib,urllib.request,urllib.error,subprocess,tempfile,pathlib,zipfile,io
+        BASE='http://127.0.0.1:18080';TOKEN=None;ROOT=pathlib.Path.cwd();PROFILE=os.environ['PROFILE']
+        def api(method,path,data=None,headers=None):
+         h=dict(headers or {})
+         if TOKEN:h['Authorization']='Bearer '+TOKEN
+         if isinstance(data,dict):data=json.dumps(data).encode();h['Content-Type']='application/json'
+         r=urllib.request.Request(BASE+path,data=data,headers=h,method=method)
+         try:
+          with urllib.request.urlopen(r,timeout=30) as f:return f.status,f.read()
+         except urllib.error.HTTPError as e:return e.code,e.read()
+        def ok(method,path,data=None,headers=None):
+         code,body=api(method,path,data,headers)
+         assert 200<=code<300,(method,path,code,body[:180])
+         return body
+        def cmd(args,**kw):return subprocess.run(args,check=True,text=True,capture_output=True,**kw).stdout
+        for _ in range(90):
+         try:
+          if api('GET','/health')[0]==200:break
+         except OSError:pass
+         time.sleep(1)
+        else:raise AssertionError('backend readiness timed out')
+        TOKEN=json.loads(ok('POST','/api/v1/auth/login',{'username':'admin','password':os.environ['ADMIN_PASS']}))['access_token']
+        key='strict-'+PROFILE
+        fmt={'deb':'debian','rpm':'rpm','go':'go','helm':'helm'}[PROFILE]
+        ok('POST','/api/v1/repositories',{'key':key,'name':'Synthetic '+PROFILE,'format':fmt,'repo_type':'local','is_public':True})
+        with tempfile.TemporaryDirectory() as td:
+         d=pathlib.Path(td)
+         if PROFILE=='go':
+          module='example.com/ca-native-fixture';version='v1.0.0'
+          gomod=b'module example.com/ca-native-fixture\n\ngo 1.20\n'
+          source=b'package fixture\nfunc Message() string { return "ca-native-fixture" }\n'
+          buf=io.BytesIO()
+          with zipfile.ZipFile(buf,'w') as z:
+           z.writestr(module+'@'+version+'/go.mod',gomod);z.writestr(module+'@'+version+'/fixture.go',source)
+          path='/go/'+key+'/'+module+'/@v/'+version
+          ok('PUT',path+'.mod',gomod);ok('PUT',path+'.zip',buf.getvalue())
+          assert ok('GET',path+'.zip')==buf.getvalue()
+          assert json.loads(ok('GET',path+'.info'))['Version']==version
+          (d/'go.mod').write_text('module consumer.example\n\ngo 1.20\n')
+          (d/'main.go').write_text('package main\nimport ("fmt"; f "example.com/ca-native-fixture")\nfunc main(){fmt.Print(f.Message())}\n')
+          env=dict(os.environ,GOPROXY=BASE+'/go/'+key,GOSUMDB='off',GOPRIVATE='',GONOPROXY='',GOMODCACHE=str(d/'cache'),GOWORK='off')
+          cmd(['go','get',module+'@'+version],cwd=d,env=env)
+          assert cmd(['go','run','.'],cwd=d,env=env)=='ca-native-fixture'
+          print('PASS: strict Go upload, proxy download and compiled native consumer')
+         elif PROFILE=='helm':
+          chart=d/'ca-native-chart';(chart/'templates').mkdir(parents=True)
+          (chart/'Chart.yaml').write_text('apiVersion: v2\nname: ca-native-chart\nversion: 1.0.0\n')
+          (chart/'templates'/'config.yaml').write_text('apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: fixture\n')
+          cmd(['helm','package',str(chart),'--destination',str(d)])
+          package=d/'ca-native-chart-1.0.0.tgz'
+          cmd(['curl','-fsS','-H','Authorization: Bearer '+TOKEN,'-F','chart=@'+str(package),BASE+'/helm/'+key+'/api/charts'])
+          env=dict(os.environ,HELM_CONFIG_HOME=str(d/'config'),HELM_CACHE_HOME=str(d/'cache'),HELM_DATA_HOME=str(d/'data'))
+          cmd(['helm','repo','add','fixture',BASE+'/helm/'+key],env=env)
+          cmd(['helm','repo','update'],env=env)
+          (d/'download').mkdir();cmd(['helm','pull','fixture/ca-native-chart','--version','1.0.0','--destination',str(d/'download')],env=env)
+          assert (d/'download'/package.name).read_bytes()==package.read_bytes()
+          assert 'version: 1.0.0' in cmd(['helm','show','chart',str(d/'download'/package.name)],env=env)
+          print('PASS: strict Helm package, ChartMuseum upload, native index/pull and byte equality')
+         elif PROFILE=='rpm':
+          p=ROOT/'backend/tests/fixtures/ak-meta-test-1.0-1.noarch.rpm'
+          ok('PUT','/rpm/'+key+'/packages/'+p.name,p.read_bytes(),{'Content-Type':'application/x-rpm'})
+          assert ok('GET','/rpm/'+key+'/packages/'+p.name)==p.read_bytes()
+          for _ in range(60):
+           c,b=api('GET','/rpm/'+key+'/repodata/repomd.xml')
+           if c==200 and b'repomd' in b:break
+           time.sleep(1)
+          else:raise AssertionError('RPM repodata unavailable')
+          network=json.loads(cmd(['docker','inspect','e2e-test-backend']))[0]['NetworkSettings']['Networks']
+          net=next(iter(network))
+          script='set -e; dnf -q -y install --allowerasing dnf-plugins-core >/dev/null; dnf -q --repofrompath=fixture,http://backend.test:8080/rpm/'+key+' --disablerepo="*" --enablerepo=fixture --setopt=fixture.gpgcheck=0 repoquery --qf "%{name}-%{version}" | grep -Fx ak-meta-test-1.0'
+          output=cmd(['docker','run','--rm','--network',net,'rockylinux/rockylinux:9','bash','-c',script]);assert 'ak-meta-test-1.0' in output
+          print('PASS: strict RPM fixture upload/download, repodata and native DNF repoquery (unsigned test fixture)')
+         elif PROFILE=='deb':
+          pkg=d/'pkg';(pkg/'DEBIAN').mkdir(parents=True);(pkg/'usr/share/ca-native-deb').mkdir(parents=True)
+          (pkg/'DEBIAN/control').write_text('Package: ca-native-deb\nVersion: 1.0.0\nArchitecture: all\nMaintainer: Test <test@example.com>\nDescription: synthetic validation package\n')
+          (pkg/'usr/share/ca-native-deb/data').write_text('synthetic fixture\n')
+          package=d/'ca-native-deb_1.0.0_all.deb';cmd(['dpkg-deb','--build','--root-owner-group',str(pkg),str(package)])
+          path='/debian/'+key+'/pool/main/c/ca-native-deb/'+package.name
+          ok('PUT',path,package.read_bytes(),{'Content-Type':'application/vnd.debian.binary-package'})
+          assert ok('GET',path)==package.read_bytes()
+          lists=d/'lists';(lists/'partial').mkdir(parents=True);cache=d/'apt-cache';(cache/'archives/partial').mkdir(parents=True)
+          sources=d/'sources.list';sources.write_text('deb [trusted=yes] '+BASE+'/debian/'+key+' /\n')
+          parts=d/'parts';parts.mkdir()
+          opts=['-o','Dir::Etc::sourcelist='+str(sources),'-o','Dir::Etc::sourceparts='+str(parts),'-o','Dir::State::lists='+str(lists),'-o','Dir::Cache='+str(cache),'-o','APT::Get::List-Cleanup=0']
+          cmd(['apt-get',*opts,'update']);(d/'download').mkdir();cmd(['apt-get',*opts,'download','ca-native-deb=1.0.0'],cwd=d/'download')
+          assert (d/'download'/package.name).read_bytes()==package.read_bytes()
+          print('PASS: strict DEB build/upload, native APT metadata/download and byte equality (unsigned test fixture)')
+        STRICT
+        if [[ "$PROFILE" =~ ^(go|helm|rpm|deb)$ ]]; then
+          docker compose -f validation-compose.json up -d --no-build --wait --wait-timeout 180 postgres backend > reports/start.log 2>&1
+          if [ "$PROFILE" = helm ]; then
+            curl -fsSL https://get.helm.sh/helm-v3.17.4-linux-amd64.tar.gz -o /tmp/native-helm.tgz
+            tar -xzf /tmp/native-helm.tgz -C /tmp
+            export PATH=/tmp/linux-amd64:$PATH
+          fi
+          timeout 720 python3 strict-native.py > reports/test.log 2>&1
+        else
+          target="${PROFILE}-test"
+          docker compose -f validation-compose.json up -d --no-build --wait --wait-timeout 180 trivy setup pki > reports/start.log 2>&1
+          cat > bootstrap.py <<'BOOTSTRAP'
+        import json,os,urllib.request,urllib.error
         base='http://127.0.0.1:18080'
-        r=urllib.request.Request(base+'/api/v1/auth/login',data=json.dumps({'username':'admin','password':os.environ['ADMIN_PASS']}).encode(),headers={'Content-Type':'application/json'})
-        with urllib.request.urlopen(r,timeout=20) as f: token=json.load(f)['access_token']
-        r=urllib.request.Request(base+'/api/v1/repositories',data=json.dumps({'key':'test-hex','name':'Hex synthetic fixture','format':'hex','repo_type':'local','is_public':True}).encode(),headers={'Content-Type':'application/json','Authorization':'Bearer '+token})
-        with urllib.request.urlopen(r,timeout=20) as f: assert 200<=f.status<300
-        print('Created missing Hex repository fixture')
-        HEXFIXTURE
-          fi
-          if [ "$profile" = cache-correctness ]; then
-            docker compose -f validation-compose.json build cache-mock-upstream > validation-reports/cache-mock-build.log 2>&1
-          fi
-          if [ "$profile" = docker ]; then
-            if docker compose -f validation-compose.json up -d --no-build --wait --wait-timeout 180 trivy setup pki > validation-reports/docker-start.log 2>&1 && REGISTRY_URL=localhost:18080 REGISTRY_PASS="$ADMIN_PASS" CA_CERT="$PWD/.pki/ca.crt" bash scripts/native-tests/test-docker.sh > validation-reports/docker-host.log 2>&1; then
-              echo 'docker: host Docker CLI suite passed' | tee -a validation-reports/results.txt
-            else
-              echo 'docker: host Docker CLI suite failed' | tee -a validation-reports/results.txt; failed=1
-            fi
-          elif docker compose -f validation-compose.json up -d --no-build trivy $targets > "validation-reports/$profile-start.log" 2>&1; then
-            if ! timeout 1000 docker wait $containers > "validation-reports/$profile-wait.log" 2>&1; then failed=1; fi
-            for container in $containers; do
-              docker logs "$container" > "validation-reports/$container.log" 2>&1 || true
-              state=$(docker inspect --format '{{.State.Status}} {{.State.ExitCode}} {{.State.OOMKilled}}' "$container" 2>/dev/null || echo missing)
-              echo "$profile: $container: $state" | tee -a validation-reports/results.txt
-              if [ "$state" != 'exited 0 false' ]; then failed=1; fi
-            done
-          else
-            echo "$profile: SETUP FAILED" | tee -a validation-reports/results.txt; failed=1
-          fi
-          docker compose -f validation-compose.json logs --no-color > "validation-reports/$profile-stack.log" 2>&1 || true
-          docker compose -f validation-compose.json down -v --remove-orphans > "validation-reports/$profile-cleanup.log" 2>&1
-         done
-        cat validation-reports/results.txt >> "$GITHUB_STEP_SUMMARY"
-        exit "$failed"
-    - name: Concurrent transfers and failure recovery
-      if: matrix.profiles == 'recovery'
-      run: |
-        set -euo pipefail
-        mkdir -p validation-reports
-        cat > validation-ports.json <<'JSON'
-        {"services":{"backend":{"ports":["127.0.0.1:18080:8080"]}}}
-        JSON
-        export COMPOSE_FILE=docker-compose.test.yml:validation-ports.json
-        set -a
-        . ./.env.test
-        set +a
-        docker compose up -d --wait --wait-timeout 180 postgres backend
-        cat > validation-recovery.py <<'PYTHON'
-        import concurrent.futures as cf
-        import hashlib, json, os, random, subprocess, time, urllib.request, urllib.error
-        BASE='http://127.0.0.1:18080'
-        token=None
-
-        def api(method, path, body=None, timeout=20):
-            headers={}
-            if token: headers['Authorization']='Bearer '+token
-            if isinstance(body, dict):
-                body=json.dumps(body).encode(); headers['Content-Type']='application/json'
-            elif body is not None: headers['Content-Type']='application/octet-stream'
-            request=urllib.request.Request(BASE+path, data=body, method=method, headers=headers)
-            deadline=time.monotonic()+180
-            while True:
-                try:
-                    with urllib.request.urlopen(request, timeout=timeout) as r: return r.status,r.read()
-                except urllib.error.HTTPError as e:
-                    if e.code!=429 or time.monotonic()>=deadline: return e.code,e.read()
-                    retry=e.headers.get('Retry-After','1')
-                    try: delay=max(1.0,float(retry))
-                    except ValueError: delay=1.0
-                    time.sleep(min(delay,30)+random.uniform(0,0.5))
-
-        def compose(*args):
-            subprocess.run(['docker','compose',*args],check=True,stdout=subprocess.DEVNULL)
-
-        def ready():
-            for _ in range(60):
-                try:
-                    code,_=api('GET','/health',timeout=2)
-                    if code==200: return
-                except (OSError,TimeoutError): pass
-                time.sleep(2)
-            raise AssertionError('backend recovery timeout')
-
-        ready()
-        code,data=api('POST','/api/v1/auth/login',{'username':'admin','password':os.environ['ADMIN_PASS']})
-        assert code==200,('login status',code)
-        token=json.loads(data)['access_token']
-        repo='ca-validation-recovery'
-        code,_=api('POST','/api/v1/repositories',{'key':repo,'name':'Synthetic validation','format':'generic','repo_type':'local','is_public':False})
-        assert 200<=code<300,('repository creation status',code)
-        path='/api/v1/repositories/'+repo+'/artifacts/'
-
-        def transfer(i):
-            payload=hashlib.sha256(str(i).encode()).digest()*2048
-            key=path+str(i)+'.bin'
-            code,_=api('PUT',key,payload)
-            assert 200<=code<300,('upload',i,code)
-            code,actual=api('GET','/api/v1/repositories/'+repo+'/download/'+str(i)+'.bin')
-            assert code==200 and actual==payload,('download/checksum',i,code)
-            return i
-
-        with cf.ThreadPoolExecutor(max_workers=20) as pool:
-            assert len(list(pool.map(transfer,range(100))))==100
-        print('PASS: 100 uploads/downloads at concurrency 20, every byte verified; bounded HTTP 429 retries respected',flush=True)
-        compose('kill','backend')
-        compose('up','-d','backend')
-        ready(); transfer(101)
-        print('PASS: backend kill/restart preserves existing and accepts new artifacts',flush=True)
-        code,data=api('GET','/api/v1/repositories/'+repo+'/download/0.bin')
-        assert code==200 and data==hashlib.sha256(b'0').digest()*2048
-        compose('stop','postgres')
-        try:
-            code,_=api('PUT',path+'db-offline.bin',b'database outage probe',timeout=45)
-            assert 500<=code<600,('database outage status',code)
-        finally: compose('start','postgres')
-        for _ in range(60):
-            try:
-                transfer(102); break
-            except (AssertionError,OSError,TimeoutError): time.sleep(2)
-        else: raise AssertionError('database recovery timeout')
-        print('PASS: database outage fails the write and recovers after restart',flush=True)
-        compose('exec','-T','--user','root','backend','chmod','-R','a-w','/data/storage')
-        try:
-            code,_=api('PUT',path+'storage-readonly.bin',b'unique storage failure probe')
-            assert 500<=code<600,('storage failure status',code)
-        finally: compose('exec','-T','--user','root','backend','chmod','-R','u+rwX','/data/storage')
-        transfer(103)
-        print('PASS: denied storage write returns server error and recovers',flush=True)
-        PYTHON
-        python3 validation-recovery.py | tee validation-reports/recovery-results.txt
-        cat validation-reports/recovery-results.txt >> "$GITHUB_STEP_SUMMARY"
-    - name: Collect backend diagnostics
+        def api(method,path,obj=None,token=None):
+         h={'Content-Type':'application/json'}
+         if token:h['Authorization']='Bearer '+token
+         req=urllib.request.Request(base+path,data=json.dumps(obj).encode() if obj else None,headers=h,method=method)
+         try:
+          with urllib.request.urlopen(req,timeout=20) as f:return f.status,json.load(f)
+         except urllib.error.HTTPError as e:return e.code,e.read().decode()[:160]
+        code,body=api('POST','/api/v1/auth/login',{'username':'admin','password':os.environ['ADMIN_PASS']});assert code==200,code
+        token=body['access_token']
+        if os.environ['PROFILE']=='hex':
+         code,body=api('POST','/api/v1/repositories',{'key':'ci-hex','name':'Synthetic Hex fixture','format':'hex','repo_type':'local','is_public':True},token)
+         assert 200<=code<300,(code,body)
+         code,body=api('GET','/api/v1/repositories/ci-hex',token=token)
+         assert code==200 and body['format']=='hex',(code,body)
+         print('Verified Hex fixture format and visibility')
+        BOOTSTRAP
+          python3 bootstrap.py > reports/bootstrap.log 2>&1
+          docker compose -f validation-compose.json up -d --no-build "$target" >> reports/start.log 2>&1
+          container="e2e-test-$PROFILE"
+          timeout 720 docker wait "$container" > reports/wait.log
+          docker logs "$container" > reports/test.log 2>&1
+          state=$(docker inspect --format '{{.State.Status}} {{.State.ExitCode}} {{.State.OOMKilled}}' "$container")
+          echo "$state" > reports/exit-state.txt
+          [ "$state" = 'exited 0 false' ]
+        fi
+        echo "PASS: $MODE $PROFILE product=$PRODUCT_SHA" | tee reports/result.txt
+    - name: Collect diagnostic output
       if: always()
       run: |
-        mkdir -p validation-reports
-        docker logs e2e-test-backend > validation-reports/backend-final.log 2>&1 || true
-        docker ps -a > validation-reports/containers.txt
-    - name: Upload results
+        mkdir -p reports
+        if [ -f validation-compose.json ]; then docker compose -f validation-compose.json logs --no-color > reports/stack.log 2>&1 || true; fi
+        docker ps -a > reports/containers.txt
+    - name: Upload profile evidence
       if: always()
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
-        name: extra-${{ strategy.job-index }}
-        path: validation-reports
+        name: remaining-${{ matrix.mode }}-${{ matrix.profile }}
+        path: reports
         retention-days: 7
-    - name: Clean disposable stack
+    - name: Clean isolated stack
       if: always()
       run: |
-        if [ -f validation-compose.json ]; then docker compose -f validation-compose.json down -v --remove-orphans; else docker compose -f docker-compose.test.yml --profile all down -v --remove-orphans; fi
+        if [ -f validation-compose.json ]; then docker compose -f validation-compose.json down -v --remove-orphans; fi
+  mounted-ca:
+    name: ${{ matrix.mode }} / mounted CA rotation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+        - mode: pr
+          profile: go
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42022451713
+          product_sha: 7f7345abb9998e74d3c4c80ba1da86e80ebb01a0
+        - mode: base
+          profile: go
+          image_repo: artifact-keeper/artifact-keeper
+          image_run: 41984326775
+          product_sha: 61c9d9db51f81c37d20b545ad9febf061aff3a65
+    env:
+      PROFILE: ${{ matrix.profile }}
+      MODE: ${{ matrix.mode }}
+      PRODUCT_SHA: ${{ matrix.product_sha }}
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        ref: 7f7345abb9998e74d3c4c80ba1da86e80ebb01a0
+        persist-credentials: false
+    - name: Verify exact product source
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        actual=$(gh api "repos/${{ matrix.image_repo }}/actions/runs/${{ matrix.image_run }}" --jq .head_sha)
+        test "$actual" = "$PRODUCT_SHA"
+    - name: Download exact-source CI image
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+      with:
+        repository: ${{ matrix.image_repo }}
+        run-id: ${{ matrix.image_run }}
+        name: backend-image
+        github-token: ${{ github.token }}
+    - name: Load verified image
+      run: |
+        docker load < backend-image.tar.gz
+        docker tag artifact-keeper-backend:pr-test artifact-keeper-backend:test
+    - name: Exercise mounted CA lifecycle
+      run: |
+        set -euo pipefail
+        mkdir -p reports
+        set -a
+        . ./.env.test
+        set +a
+        cat > ca-e2e.py <<'CA_TEST'
+        import json,os,time,pathlib,urllib.request,urllib.error,subprocess,hashlib
+        P=pathlib.Path('ca-fixture');P.mkdir(exist_ok=True)
+        def run(*args):return subprocess.check_output(args,text=True,stderr=subprocess.DEVNULL)
+        for x in ('a','b'):
+         run('openssl','req','-x509','-newkey','rsa:2048','-nodes','-keyout',str(P/(x+'-ca.key')),'-out',str(P/(x+'-ca.crt')),'-days','2','-subj','/CN=CA validation '+x)
+         run('openssl','req','-newkey','rsa:2048','-nodes','-keyout',str(P/(x+'.key')),'-out',str(P/(x+'.csr')),'-subj','/CN=tls-'+x+'.test')
+         (P/'ext').write_text('subjectAltName=DNS:tls-'+x+'.test\nextendedKeyUsage=serverAuth\n')
+         run('openssl','x509','-req','-in',str(P/(x+'.csr')),'-CA',str(P/(x+'-ca.crt')),'-CAkey',str(P/(x+'-ca.key')),'-CAcreateserial','-out',str(P/(x+'.crt')),'-days','2','-extfile',str(P/'ext'))
+        (P/'ca.pem').write_bytes((P/'a-ca.crt').read_bytes())
+        (P/'server.py').write_text('''import http.server,ssl,os
+        class H(http.server.BaseHTTPRequestHandler):
+         def do_GET(self):
+          data=b"ca-rotation-fixture";self.send_response(200);self.send_header("Content-Length",str(len(data)));self.send_header("Cache-Control","no-store");self.end_headers();self.wfile.write(data)
+        server=http.server.ThreadingHTTPServer(("0.0.0.0",9443),H)
+        ctx=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER);ctx.load_cert_chain("/fixture/"+os.environ["CERT"]+".crt","/fixture/"+os.environ["CERT"]+".key");server.socket=ctx.wrap_socket(server.socket,server_side=True);server.serve_forever()
+        ''')
+        c=json.loads(run('docker','compose','-f','docker-compose.test.yml','--profile','all','config','--format','json'));s=c['services'];b=s['backend'];b.pop('build',None)
+        b['ports']=[{'target':8080,'published':'18080','host_ip':'127.0.0.1','protocol':'tcp'}]
+        b['environment']['CUSTOM_CA_CERT_PATH']='/ca-validation/ca.pem';b.setdefault('volumes',[]).append({'type':'bind','source':str(P.resolve()),'target':'/ca-validation','read_only':True})
+        for x in ('a','b'):
+         s['tls-'+x]={'image':'python:3.14-alpine','environment':{'CERT':x},'volumes':[str(P.resolve())+':/fixture:ro'],'command':['python','/fixture/server.py'],'networks':{'e2e-test-network':{'aliases':['tls-'+x+'.test']}}}
+        pathlib.Path('validation-compose.json').write_text(json.dumps(c))
+        run('docker','compose','-f','validation-compose.json','up','-d','--no-build','--wait','--wait-timeout','180','postgres','backend','tls-a','tls-b')
+        BASE='http://127.0.0.1:18080';token=None
+        def api(method,path,data=None):
+         h={}
+         if token:h['Authorization']='Bearer '+token
+         if isinstance(data,dict):data=json.dumps(data).encode();h['Content-Type']='application/json'
+         q=urllib.request.Request(BASE+path,data=data,headers=h,method=method)
+         try:
+          with urllib.request.urlopen(q,timeout=20) as r:return r.status,r.read()
+         except urllib.error.HTTPError as e:return e.code,e.read()
+        code,body=api('POST','/api/v1/auth/login',{'username':'admin','password':os.environ['ADMIN_PASS']});assert code==200,code;token=json.loads(body)['access_token']
+        for x in ('a','b'):
+         code,body=api('POST','/api/v1/repositories',{'key':'ca-'+x,'name':'Synthetic CA '+x,'format':'generic','repo_type':'remote','upstream_url':'https://tls-'+x+'.test:9443','is_public':False});assert 200<=code<300,(code,body[:200])
+        start=run('docker','inspect','--format','{{.State.StartedAt}}','e2e-test-backend')
+        def probe(x,nonce):return api('GET','/api/v1/repositories/ca-'+x+'/download/'+nonce+'.bin')
+        def good(x,n):
+         code,data=probe(x,n);assert code==200 and data==b'ca-rotation-fixture',(x,n,code,data[:200])
+        def bad(x,n):
+         code,data=probe(x,n);assert 500<=code<600,(x,n,code,data[:200])
+        def rotate(data):
+         (P/'next.pem').write_bytes(data);os.replace(P/'next.pem',P/'ca.pem');time.sleep(12)
+        good('a','initial-a');bad('b','initial-b')
+        rotate((P/'a-ca.crt').read_bytes()+(P/'b-ca.crt').read_bytes())
+        if os.environ['MODE']=='pr':good('b','added-b')
+        else:bad('b','base-added-b')
+        rotate((P/'b-ca.crt').read_bytes())
+        if os.environ['MODE']=='pr':bad('a','removed-a');good('b','retained-b')
+        else:good('a','base-stale-a');bad('b','base-stale-b')
+        rotate(b'not a valid PEM bundle')
+        if os.environ['MODE']=='pr':good('b','invalid-retains-b')
+        else:good('a','base-original-a')
+        assert start==run('docker','inspect','--format','{{.State.StartedAt}}','e2e-test-backend')
+        if os.environ['MODE']=='pr':print('PASS: mounted-directory atomic CA addition, removal and invalid-update fallback; retained repositories; backend never restarted')
+        else:print('CONTROL CONFIRMED: base retains original A trust and rejects newly added B without restart')
+
+        CA_TEST
+        timeout 240 python3 ca-e2e.py > reports/test.log 2>&1
+    - name: Collect diagnostic output
+      if: always()
+      run: |
+        mkdir -p reports
+        if [ -f validation-compose.json ]; then docker compose -f validation-compose.json logs --no-color > reports/stack.log 2>&1 || true; fi
+        docker ps -a > reports/containers.txt
+    - name: Upload profile evidence
+      if: always()
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: mounted-ca-${{ matrix.mode }}
+        path: reports
+        retention-days: 7
+    - name: Clean isolated stack
+      if: always()
+      run: |
+        if [ -f validation-compose.json ]; then docker compose -f validation-compose.json down -v --remove-orphans; fi
