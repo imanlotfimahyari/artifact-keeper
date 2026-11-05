@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, master, develop, 'release/**']
+    branches: [main, master, develop, 'release/**', 'validation/5194-full-ci']
     paths-ignore:
       - 'site/**'
       - '**/*.md'
