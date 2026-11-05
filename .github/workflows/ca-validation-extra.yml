@@ -1,0 +1,207 @@
+name: PR 5194 extended validation
+'on':
+  push:
+    branches:
+    - validation/5194-extra-hosted
+    paths:
+    - .github/workflows/ca-validation-extra.yml
+  workflow_dispatch: {}
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: ca-5194-extended
+  cancel-in-progress: false
+jobs:
+  image:
+    name: Wait for exact-head CI image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+    - name: Verify source and wait for image
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        set -euo pipefail
+        expected="7f7345abb9998e74d3c4c80ba1da86e80ebb01a0"
+        actual=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/42022451713" --jq .head_sha)
+        [ "$actual" = "$expected" ]
+        for attempt in $(seq 1 90); do
+          count=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/42022451713/artifacts" --jq '[.artifacts[] | select(.name == "backend-image" and .expired == false)] | length')
+          if [ "$count" = 1 ]; then echo "Verified backend image artifact for $expected"; exit 0; fi
+          status=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/42022451713" --jq .status)
+          [ "$status" != completed ] || { echo 'CI finished without backend image'; exit 1; }
+          sleep 30
+        done
+        echo 'Timed out waiting for the exact-head image'; exit 1
+  extended:
+    name: Extended (${{ matrix.profiles }})
+    needs: image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        profiles:
+        - maven go helm
+        - rpm deb conda
+        - docker protobuf hex
+        - terraform-mirror terraform-modules
+        - tag-replication storage-gc docker-proxy
+        - curation cache-correctness
+        - recovery
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        ref: 7f7345abb9998e74d3c4c80ba1da86e80ebb01a0
+        persist-credentials: false
+    - name: Download exact-head backend image
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+      with:
+        name: backend-image
+        run-id: 42022451713
+        github-token: ${{ github.token }}
+    - name: Load tested image
+      run: |
+        docker load < backend-image.tar.gz
+        docker tag artifact-keeper-backend:pr-test artifact-keeper-backend:test
+    - name: Native client suites, inspect every exit status
+      if: matrix.profiles != 'recovery'
+      env:
+        PROFILES: ${{ matrix.profiles }}
+      run: |
+        set -euo pipefail
+        mkdir -p validation-reports
+        bash scripts/pki/generate-certs.sh .pki > validation-reports/pki.log 2>&1
+        bash scripts/pki/generate-gpg.sh .pki >> validation-reports/pki.log 2>&1
+        failed=0
+        for profile in $PROFILES; do
+          case "$profile" in
+            cache-correctness) containers="e2e-test-cache-correctness e2e-test-virtual-resolution" ;;
+            *) containers="e2e-test-$profile" ;;
+          esac
+          if docker compose -f docker-compose.test.yml --profile "$profile" up -d --no-build > "validation-reports/$profile-start.log" 2>&1; then
+            if ! timeout 1000 docker wait $containers > "validation-reports/$profile-wait.log" 2>&1; then failed=1; fi
+            for container in $containers; do
+              docker logs "$container" > "validation-reports/$container.log" 2>&1 || true
+              state=$(docker inspect --format '{{.State.Status}} {{.State.ExitCode}} {{.State.OOMKilled}}' "$container" 2>/dev/null || echo missing)
+              echo "$profile: $container: $state" | tee -a validation-reports/results.txt
+              if [ "$state" != "exited 0 false" ]; then failed=1; fi
+            done
+          else
+            echo "$profile: SETUP FAILED" | tee -a validation-reports/results.txt
+            failed=1
+          fi
+          docker logs e2e-test-backend > "validation-reports/$profile-backend.log" 2>&1 || true
+          docker compose -f docker-compose.test.yml --profile "$profile" down -v --remove-orphans >> "validation-reports/$profile-cleanup.log" 2>&1
+         done
+        cat validation-reports/results.txt >> "$GITHUB_STEP_SUMMARY"
+        exit "$failed"
+    - name: Concurrent transfers and failure recovery
+      if: matrix.profiles == 'recovery'
+      run: |
+        set -euo pipefail
+        mkdir -p validation-reports
+        cat > validation-ports.json <<'JSON'
+        {"services":{"backend":{"ports":["127.0.0.1:18080:8080"]}}}
+        JSON
+        export COMPOSE_FILE=docker-compose.test.yml:validation-ports.json
+        set -a
+        . ./.env.test
+        set +a
+        docker compose up -d --wait --wait-timeout 180 postgres backend
+        cat > validation-recovery.py <<'PYTHON'
+        import concurrent.futures as cf
+        import hashlib, json, os, subprocess, time, urllib.request, urllib.error
+        BASE='http://127.0.0.1:18080'
+        token=None
+
+        def api(method, path, body=None, timeout=20):
+            headers={}
+            if token: headers['Authorization']='Bearer '+token
+            if isinstance(body, dict):
+                body=json.dumps(body).encode(); headers['Content-Type']='application/json'
+            elif body is not None: headers['Content-Type']='application/octet-stream'
+            request=urllib.request.Request(BASE+path, data=body, method=method, headers=headers)
+            try:
+                with urllib.request.urlopen(request, timeout=timeout) as r: return r.status,r.read()
+            except urllib.error.HTTPError as e: return e.code,e.read()
+
+        def compose(*args):
+            subprocess.run(['docker','compose',*args],check=True,stdout=subprocess.DEVNULL)
+
+        def ready():
+            for _ in range(60):
+                try:
+                    code,_=api('GET','/health',timeout=2)
+                    if code==200: return
+                except (OSError,TimeoutError): pass
+                time.sleep(2)
+            raise AssertionError('backend recovery timeout')
+
+        ready()
+        code,data=api('POST','/api/v1/auth/login',{'username':'admin','password':os.environ['ADMIN_PASS']})
+        assert code==200,('login status',code)
+        token=json.loads(data)['access_token']
+        repo='ca-validation-recovery'
+        code,_=api('POST','/api/v1/repositories',{'key':repo,'name':'Synthetic validation','format':'generic','repo_type':'local','is_public':False})
+        assert 200<=code<300,('repository creation status',code)
+        path='/api/v1/repositories/'+repo+'/artifacts/'
+
+        def transfer(i):
+            payload=hashlib.sha256(str(i).encode()).digest()*2048
+            key=path+str(i)+'.bin'
+            code,_=api('PUT',key,payload)
+            assert 200<=code<300,('upload',i,code)
+            code,actual=api('GET',key)
+            assert code==200 and actual==payload,('download/checksum',i,code)
+            return i
+
+        with cf.ThreadPoolExecutor(max_workers=20) as pool:
+            assert len(list(pool.map(transfer,range(100))))==100
+        print('PASS: 100 uploads/downloads at concurrency 20, every byte verified',flush=True)
+        compose('kill','backend')
+        compose('up','-d','backend')
+        ready(); transfer(101)
+        print('PASS: backend kill/restart preserves existing and accepts new artifacts',flush=True)
+        code,data=api('GET',path+'0.bin')
+        assert code==200 and data==hashlib.sha256(b'0').digest()*2048
+        compose('stop','postgres')
+        try:
+            code,_=api('PUT',path+'db-offline.bin',b'database outage probe',timeout=45)
+            assert 500<=code<600,('database outage status',code)
+        finally: compose('start','postgres')
+        for _ in range(60):
+            try:
+                transfer(102); break
+            except (AssertionError,OSError,TimeoutError): time.sleep(2)
+        else: raise AssertionError('database recovery timeout')
+        print('PASS: database outage fails the write and recovers after restart',flush=True)
+        compose('exec','-T','--user','root','backend','chmod','-R','a-w','/data/storage')
+        try:
+            code,_=api('PUT',path+'storage-readonly.bin',b'unique storage failure probe')
+            assert 500<=code<600,('storage failure status',code)
+        finally: compose('exec','-T','--user','root','backend','chmod','-R','u+rwX','/data/storage')
+        transfer(103)
+        print('PASS: denied storage write returns server error and recovers',flush=True)
+        PYTHON
+        python3 validation-recovery.py | tee validation-reports/recovery-results.txt
+        cat validation-reports/recovery-results.txt >> "$GITHUB_STEP_SUMMARY"
+    - name: Collect backend diagnostics
+      if: always()
+      run: |
+        mkdir -p validation-reports
+        docker logs e2e-test-backend > validation-reports/backend-final.log 2>&1 || true
+        docker ps -a > validation-reports/containers.txt
+    - name: Upload results
+      if: always()
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: extra-${{ strategy.job-index }}
+        path: validation-reports
+        retention-days: 7
+    - name: Clean disposable stack
+      if: always()
+      run: |-
+        docker compose -f docker-compose.test.yml --profile all --profile curation --profile cache-correctness --profile terraform-mirror --profile terraform-modules down -v --remove-orphans
