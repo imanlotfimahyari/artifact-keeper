@@ -1,4 +1,4 @@
-name: PR 5194 remaining native tests
+name: PR 5194 DEB client validation
 'on':
   push:
     branches:
@@ -19,96 +19,16 @@ jobs:
     timeout-minutes: 18
     strategy:
       fail-fast: false
-      max-parallel: 18
+      max-parallel: 2
       matrix:
         include:
         - mode: pr
-          profile: go
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42022451713
-          product_sha: 7f7345abb9998e74d3c4c80ba1da86e80ebb01a0
-        - mode: pr
-          profile: helm
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42022451713
-          product_sha: 7f7345abb9998e74d3c4c80ba1da86e80ebb01a0
-        - mode: pr
-          profile: rpm
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42022451713
-          product_sha: 7f7345abb9998e74d3c4c80ba1da86e80ebb01a0
-        - mode: pr
           profile: deb
           image_repo: imanlotfimahyari/artifact-keeper
           image_run: 42022451713
           product_sha: 7f7345abb9998e74d3c4c80ba1da86e80ebb01a0
-        - mode: pr
-          profile: conda
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42022451713
-          product_sha: 7f7345abb9998e74d3c4c80ba1da86e80ebb01a0
-        - mode: pr
-          profile: hex
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42022451713
-          product_sha: 7f7345abb9998e74d3c4c80ba1da86e80ebb01a0
-        - mode: pr
-          profile: protobuf
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42022451713
-          product_sha: 7f7345abb9998e74d3c4c80ba1da86e80ebb01a0
-        - mode: pr
-          profile: terraform-mirror
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42022451713
-          product_sha: 7f7345abb9998e74d3c4c80ba1da86e80ebb01a0
-        - mode: pr
-          profile: curation
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42022451713
-          product_sha: 7f7345abb9998e74d3c4c80ba1da86e80ebb01a0
-        - mode: base
-          profile: go
-          image_repo: artifact-keeper/artifact-keeper
-          image_run: 41984326775
-          product_sha: 61c9d9db51f81c37d20b545ad9febf061aff3a65
-        - mode: base
-          profile: helm
-          image_repo: artifact-keeper/artifact-keeper
-          image_run: 41984326775
-          product_sha: 61c9d9db51f81c37d20b545ad9febf061aff3a65
-        - mode: base
-          profile: rpm
-          image_repo: artifact-keeper/artifact-keeper
-          image_run: 41984326775
-          product_sha: 61c9d9db51f81c37d20b545ad9febf061aff3a65
         - mode: base
           profile: deb
-          image_repo: artifact-keeper/artifact-keeper
-          image_run: 41984326775
-          product_sha: 61c9d9db51f81c37d20b545ad9febf061aff3a65
-        - mode: base
-          profile: conda
-          image_repo: artifact-keeper/artifact-keeper
-          image_run: 41984326775
-          product_sha: 61c9d9db51f81c37d20b545ad9febf061aff3a65
-        - mode: base
-          profile: hex
-          image_repo: artifact-keeper/artifact-keeper
-          image_run: 41984326775
-          product_sha: 61c9d9db51f81c37d20b545ad9febf061aff3a65
-        - mode: base
-          profile: protobuf
-          image_repo: artifact-keeper/artifact-keeper
-          image_run: 41984326775
-          product_sha: 61c9d9db51f81c37d20b545ad9febf061aff3a65
-        - mode: base
-          profile: terraform-mirror
-          image_repo: artifact-keeper/artifact-keeper
-          image_run: 41984326775
-          product_sha: 61c9d9db51f81c37d20b545ad9febf061aff3a65
-        - mode: base
-          profile: curation
           image_repo: artifact-keeper/artifact-keeper
           image_run: 41984326775
           product_sha: 61c9d9db51f81c37d20b545ad9febf061aff3a65
@@ -202,7 +122,12 @@ jobs:
          code,body=api(method,path,data,headers)
          assert 200<=code<300,(method,path,code,body[:180])
          return body
-        def cmd(args,**kw):return subprocess.run(args,check=True,text=True,capture_output=True,**kw).stdout
+        def cmd(args,**kw):
+         r=subprocess.run(args,text=True,capture_output=True,**kw)
+         if r.returncode:
+          print(r.stdout[-4000:],flush=True);print(r.stderr[-4000:],flush=True)
+          raise RuntimeError('native command failed: '+args[0]+' exit='+str(r.returncode))
+         return r.stdout
         for _ in range(90):
          try:
           if api('GET','/health')[0]==200:break
@@ -214,7 +139,7 @@ jobs:
         fmt={'deb':'debian','rpm':'rpm','go':'go','helm':'helm'}[PROFILE]
         ok('POST','/api/v1/repositories',{'key':key,'name':'Synthetic '+PROFILE,'format':fmt,'repo_type':'local','is_public':True})
         with tempfile.TemporaryDirectory() as td:
-         d=pathlib.Path(td)
+         d=pathlib.Path(td);d.chmod(0o755)
          if PROFILE=='go':
           module='example.com/ca-native-fixture';version='v1.0.0'
           gomod=b'module example.com/ca-native-fixture\n\ngo 1.20\n'
@@ -272,9 +197,10 @@ jobs:
           sources=d/'sources.list';sources.write_text('deb [trusted=yes] '+BASE+'/debian/'+key+' /\n')
           parts=d/'parts';parts.mkdir()
           opts=['-o','Dir::Etc::sourcelist='+str(sources),'-o','Dir::Etc::sourceparts='+str(parts),'-o','Dir::State::lists='+str(lists),'-o','Dir::Cache='+str(cache),'-o','APT::Get::List-Cleanup=0']
-          cmd(['apt-get',*opts,'update']);(d/'download').mkdir();cmd(['apt-get',*opts,'download','ca-native-deb=1.0.0'],cwd=d/'download')
+          cmd(['sudo','apt-get',*opts,'update']);(d/'download').mkdir();cmd(['sudo','apt-get',*opts,'download','ca-native-deb=1.0.0'],cwd=d/'download')
           assert (d/'download'/package.name).read_bytes()==package.read_bytes()
           print('PASS: strict DEB build/upload, native APT metadata/download and byte equality (unsigned test fixture)')
+
         STRICT
         if [[ "$PROFILE" =~ ^(go|helm|rpm|deb)$ ]]; then
           docker compose -f validation-compose.json up -d --no-build --wait --wait-timeout 180 postgres backend > reports/start.log 2>&1
@@ -327,135 +253,6 @@ jobs:
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
         name: remaining-${{ matrix.mode }}-${{ matrix.profile }}
-        path: reports
-        retention-days: 7
-    - name: Clean isolated stack
-      if: always()
-      run: |
-        if [ -f validation-compose.json ]; then docker compose -f validation-compose.json down -v --remove-orphans; fi
-  mounted-ca:
-    name: ${{ matrix.mode }} / mounted CA rotation
-    runs-on: ubuntu-24.04
-    timeout-minutes: 18
-    strategy:
-      fail-fast: false
-      max-parallel: 2
-      matrix:
-        include:
-        - mode: pr
-          profile: go
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42022451713
-          product_sha: 7f7345abb9998e74d3c4c80ba1da86e80ebb01a0
-        - mode: base
-          profile: go
-          image_repo: artifact-keeper/artifact-keeper
-          image_run: 41984326775
-          product_sha: 61c9d9db51f81c37d20b545ad9febf061aff3a65
-    env:
-      PROFILE: ${{ matrix.profile }}
-      MODE: ${{ matrix.mode }}
-      PRODUCT_SHA: ${{ matrix.product_sha }}
-    steps:
-    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      with:
-        ref: 7f7345abb9998e74d3c4c80ba1da86e80ebb01a0
-        persist-credentials: false
-    - name: Verify exact product source
-      env:
-        GH_TOKEN: ${{ github.token }}
-      run: |
-        actual=$(gh api "repos/${{ matrix.image_repo }}/actions/runs/${{ matrix.image_run }}" --jq .head_sha)
-        test "$actual" = "$PRODUCT_SHA"
-    - name: Download exact-source CI image
-      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-      with:
-        repository: ${{ matrix.image_repo }}
-        run-id: ${{ matrix.image_run }}
-        name: backend-image
-        github-token: ${{ github.token }}
-    - name: Load verified image
-      run: |
-        docker load < backend-image.tar.gz
-        docker tag artifact-keeper-backend:pr-test artifact-keeper-backend:test
-    - name: Exercise mounted CA lifecycle
-      run: |
-        set -euo pipefail
-        mkdir -p reports
-        set -a
-        . ./.env.test
-        set +a
-        cat > ca-e2e.py <<'CA_TEST'
-        import json,os,time,pathlib,urllib.request,urllib.error,subprocess,hashlib
-        P=pathlib.Path('ca-fixture');P.mkdir(exist_ok=True)
-        def run(*args):return subprocess.check_output(args,text=True,stderr=subprocess.DEVNULL)
-        for x in ('a','b'):
-         run('openssl','req','-x509','-newkey','rsa:2048','-nodes','-keyout',str(P/(x+'-ca.key')),'-out',str(P/(x+'-ca.crt')),'-days','2','-subj','/CN=CA validation '+x)
-         run('openssl','req','-newkey','rsa:2048','-nodes','-keyout',str(P/(x+'.key')),'-out',str(P/(x+'.csr')),'-subj','/CN=tls-'+x+'.test')
-         (P/'ext').write_text('subjectAltName=DNS:tls-'+x+'.test\nextendedKeyUsage=serverAuth\n')
-         run('openssl','x509','-req','-in',str(P/(x+'.csr')),'-CA',str(P/(x+'-ca.crt')),'-CAkey',str(P/(x+'-ca.key')),'-CAcreateserial','-out',str(P/(x+'.crt')),'-days','2','-extfile',str(P/'ext'))
-        (P/'ca.pem').write_bytes((P/'a-ca.crt').read_bytes())
-        (P/'server.py').write_text('''import http.server,ssl,os
-        class H(http.server.BaseHTTPRequestHandler):
-         def do_GET(self):
-          data=b"ca-rotation-fixture";self.send_response(200);self.send_header("Content-Length",str(len(data)));self.send_header("Cache-Control","no-store");self.end_headers();self.wfile.write(data)
-        server=http.server.ThreadingHTTPServer(("0.0.0.0",9443),H)
-        ctx=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER);ctx.load_cert_chain("/fixture/"+os.environ["CERT"]+".crt","/fixture/"+os.environ["CERT"]+".key");server.socket=ctx.wrap_socket(server.socket,server_side=True);server.serve_forever()
-        ''')
-        c=json.loads(run('docker','compose','-f','docker-compose.test.yml','--profile','all','config','--format','json'));s=c['services'];b=s['backend'];b.pop('build',None)
-        b['ports']=[{'target':8080,'published':'18080','host_ip':'127.0.0.1','protocol':'tcp'}]
-        b['environment']['CUSTOM_CA_CERT_PATH']='/ca-validation/ca.pem';b.setdefault('volumes',[]).append({'type':'bind','source':str(P.resolve()),'target':'/ca-validation','read_only':True})
-        for x in ('a','b'):
-         s['tls-'+x]={'image':'python:3.14-alpine','environment':{'CERT':x},'volumes':[str(P.resolve())+':/fixture:ro'],'command':['python','/fixture/server.py'],'networks':{'e2e-test-network':{'aliases':['tls-'+x+'.test']}}}
-        pathlib.Path('validation-compose.json').write_text(json.dumps(c))
-        run('docker','compose','-f','validation-compose.json','up','-d','--no-build','--wait','--wait-timeout','180','postgres','backend','tls-a','tls-b')
-        BASE='http://127.0.0.1:18080';token=None
-        def api(method,path,data=None):
-         h={}
-         if token:h['Authorization']='Bearer '+token
-         if isinstance(data,dict):data=json.dumps(data).encode();h['Content-Type']='application/json'
-         q=urllib.request.Request(BASE+path,data=data,headers=h,method=method)
-         try:
-          with urllib.request.urlopen(q,timeout=20) as r:return r.status,r.read()
-         except urllib.error.HTTPError as e:return e.code,e.read()
-        code,body=api('POST','/api/v1/auth/login',{'username':'admin','password':os.environ['ADMIN_PASS']});assert code==200,code;token=json.loads(body)['access_token']
-        for x in ('a','b'):
-         code,body=api('POST','/api/v1/repositories',{'key':'ca-'+x,'name':'Synthetic CA '+x,'format':'generic','repo_type':'remote','upstream_url':'https://tls-'+x+'.test:9443','is_public':False});assert 200<=code<300,(code,body[:200])
-        start=run('docker','inspect','--format','{{.State.StartedAt}}','e2e-test-backend')
-        def probe(x,nonce):return api('GET','/api/v1/repositories/ca-'+x+'/download/'+nonce+'.bin')
-        def good(x,n):
-         code,data=probe(x,n);assert code==200 and data==b'ca-rotation-fixture',(x,n,code,data[:200])
-        def bad(x,n):
-         code,data=probe(x,n);assert 500<=code<600,(x,n,code,data[:200])
-        def rotate(data):
-         (P/'next.pem').write_bytes(data);os.replace(P/'next.pem',P/'ca.pem');time.sleep(12)
-        good('a','initial-a');bad('b','initial-b')
-        rotate((P/'a-ca.crt').read_bytes()+(P/'b-ca.crt').read_bytes())
-        if os.environ['MODE']=='pr':good('b','added-b')
-        else:bad('b','base-added-b')
-        rotate((P/'b-ca.crt').read_bytes())
-        if os.environ['MODE']=='pr':bad('a','removed-a');good('b','retained-b')
-        else:good('a','base-stale-a');bad('b','base-stale-b')
-        rotate(b'not a valid PEM bundle')
-        if os.environ['MODE']=='pr':good('b','invalid-retains-b')
-        else:good('a','base-original-a')
-        assert start==run('docker','inspect','--format','{{.State.StartedAt}}','e2e-test-backend')
-        if os.environ['MODE']=='pr':print('PASS: mounted-directory atomic CA addition, removal and invalid-update fallback; retained repositories; backend never restarted')
-        else:print('CONTROL CONFIRMED: base retains original A trust and rejects newly added B without restart')
-
-        CA_TEST
-        timeout 240 python3 ca-e2e.py > reports/test.log 2>&1
-    - name: Collect diagnostic output
-      if: always()
-      run: |
-        mkdir -p reports
-        if [ -f validation-compose.json ]; then docker compose -f validation-compose.json logs --no-color > reports/stack.log 2>&1 || true; fi
-        docker ps -a > reports/containers.txt
-    - name: Upload profile evidence
-      if: always()
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-      with:
-        name: mounted-ca-${{ matrix.mode }}
         path: reports
         retention-days: 7
     - name: Clean isolated stack
