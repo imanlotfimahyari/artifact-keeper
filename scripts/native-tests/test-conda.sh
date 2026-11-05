@@ -579,16 +579,7 @@ else
     fail "11.5: .condarc channel URL format failed"
 fi
 
-# mamba (if available)
-if command -v mamba &>/dev/null; then
-    if mamba search "e2e-v1-pkg" --override-channels -c "$BACKEND_URL/conda/$REPO_KEY" 2>&1 | grep -q "e2e-v1-pkg"; then
-        pass "11.2: mamba search works"
-    else
-        fail "11.2: mamba search failed"
-    fi
-else
-    skip "11.2: mamba not installed"
-fi
+# Check native Mamba search after section 11b installs the client.
 
 echo ""
 echo "============================================="
@@ -879,8 +870,22 @@ else
             fail "11.6: mamba install failed"
         fi
     else
-        skip "11.6+4.5: mamba not available and could not be installed"
+        fail "11.6+4.5: required mamba client could not be installed"
     fi
+fi
+
+# Mamba may have been installed above. Capture the complete result before
+# matching it so grep cannot close a running client's output pipe early.
+MAMBA_SEARCH_RESULT="$WORK_DIR/mamba-search.txt"
+if command -v mamba >/dev/null &&
+    mamba search "e2e-v1-pkg=$TEST_VERSION" --override-channels \
+        -c "$BACKEND_URL/conda/$REPO_KEY" > "$MAMBA_SEARCH_RESULT" 2>&1 &&
+    grep -Fq 'e2e-v1-pkg' "$MAMBA_SEARCH_RESULT" &&
+    grep -Fq "$TEST_VERSION" "$MAMBA_SEARCH_RESULT"; then
+    pass "11.2: mamba search finds the exact fixture version"
+else
+    [ ! -f "$MAMBA_SEARCH_RESULT" ] || cat "$MAMBA_SEARCH_RESULT"
+    fail "11.2: mamba search unavailable or did not find the exact fixture version"
 fi
 
 echo ""
