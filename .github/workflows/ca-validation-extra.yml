@@ -1,4 +1,4 @@
-name: PR 5194 DEB client validation
+name: PR 5194 repaired native comparison
 'on':
   push:
     branches:
@@ -16,22 +16,62 @@ jobs:
   native:
     name: ${{ matrix.mode }} / ${{ matrix.profile }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 18
+    timeout-minutes: 45
     strategy:
       fail-fast: false
-      max-parallel: 2
+      max-parallel: 10
       matrix:
         include:
-        - mode: pr
+        - mode: merged
           profile: deb
           image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42022451713
-          product_sha: 7f7345abb9998e74d3c4c80ba1da86e80ebb01a0
+          image_run: 42065906002
+          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
+        - mode: merged
+          profile: hex
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42065906002
+          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
+        - mode: merged
+          profile: protobuf
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42065906002
+          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
+        - mode: merged
+          profile: conda
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42065906002
+          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
+        - mode: merged
+          profile: curation
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42065906002
+          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
         - mode: base
           profile: deb
-          image_repo: artifact-keeper/artifact-keeper
-          image_run: 41984326775
-          product_sha: 61c9d9db51f81c37d20b545ad9febf061aff3a65
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42066236236
+          product_sha: 0bffa44cb2e7a4b85c4e54780628e8642e34ed14
+        - mode: base
+          profile: hex
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42066236236
+          product_sha: 0bffa44cb2e7a4b85c4e54780628e8642e34ed14
+        - mode: base
+          profile: protobuf
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42066236236
+          product_sha: 0bffa44cb2e7a4b85c4e54780628e8642e34ed14
+        - mode: base
+          profile: conda
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42066236236
+          product_sha: 0bffa44cb2e7a4b85c4e54780628e8642e34ed14
+        - mode: base
+          profile: curation
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42066236236
+          product_sha: 0bffa44cb2e7a4b85c4e54780628e8642e34ed14
     env:
       PROFILE: ${{ matrix.profile }}
       MODE: ${{ matrix.mode }}
@@ -39,14 +79,176 @@ jobs:
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
-        ref: 7f7345abb9998e74d3c4c80ba1da86e80ebb01a0
+        ref: 945c542c574b68e6934aad4565f1f8575465ad0f
         persist-credentials: false
+    - name: Apply isolated native test repairs
+      run: "cat > /tmp/native-setups.patch <<'PATCH'\ndiff --git a/scripts/native-tests/test-conda.sh b/scripts/native-tests/test-conda.sh\n\
+        index 7c4ab547..239d0953 100755\n--- a/scripts/native-tests/test-conda.sh\n+++ b/scripts/native-tests/test-conda.sh\n\
+        @@ -19,6 +19,23 @@ skip() { echo \"  SKIP: $*\"; SKIP=$((SKIP + 1)); }\n WORK_DIR=\"$(mktemp -d)\"\n trap\
+        \ 'rm -rf \"$WORK_DIR\"' EXIT\n \n+# Capture the client's exit status and validate its structured result.\
+        \ Do not\n+# pipe conda into grep -q: early pipe closure can fail an otherwise valid search.\n+conda_search_fixture()\
+        \ {\n+    local result=\"$WORK_DIR/search.json\"\n+    if ! conda search --json \"$@\" e2e-v1-pkg > \"$result\"\
+        \ 2>&1; then\n+        cat \"$result\"\n+        return 1\n+    fi\n+    python3 - \"$result\" \"$TEST_VERSION\"\
+        \ <<'SEARCH'\n+import json, sys\n+from pathlib import Path\n+result = json.loads(Path(sys.argv[1]).read_text())\n\
+        +assert any(p[\"name\"] == \"e2e-v1-pkg\" and p[\"version\"] == sys.argv[2]\n+           for p in result.get(\"\
+        e2e-v1-pkg\", [])), result\n+SEARCH\n+}\n+\n # ---------------------------------------------------------------------------\n\
+        \ # Auth helpers\n # ---------------------------------------------------------------------------\n@@ -285,7\
+        \ +302,7 @@ for k,v in pkgs.items():\n \n # conda search\n log \"Running conda search...\"\n-if conda search\
+        \ \"e2e-v1-pkg\" --override-channels -c \"$BACKEND_URL/conda/$REPO_KEY\" 2>&1 | grep -q \"$TEST_VERSION\"\
+        ; then\n+if conda_search_fixture --override-channels -c \"$BACKEND_URL/conda/$REPO_KEY\"; then\n     pass\
+        \ \"2.9: conda search finds package with correct version\"\n else\n     fail \"2.9: conda search did not\
+        \ find package\"\n@@ -527,7 +544,7 @@ echo \"  Section 11: Client Compatibility\"\n echo \"=============================================\"\
+        \n \n # conda search\n-if conda search \"e2e-v1-pkg\" --override-channels -c \"$BACKEND_URL/conda/$REPO_KEY\"\
+        \ 2>&1 | grep -q \"e2e-v1-pkg\"; then\n+if conda_search_fixture --override-channels -c \"$BACKEND_URL/conda/$REPO_KEY\"\
+        ; then\n     pass \"11.3: conda search returns correct results\"\n else\n     fail \"11.3: conda search\
+        \ did not find package\"\n@@ -554,19 +571,12 @@ CONDARC_TEST=\"$WORK_DIR/.condarc-test\"\n cat > \"$CONDARC_TEST\"\
+        \ << EOF\n channels:\n   - $BACKEND_URL/conda/$REPO_KEY\n-  - defaults\n+default_channels: []\n EOF\n-if\
+        \ CONDARC=\"$CONDARC_TEST\" conda search \"e2e-v1-pkg\" 2>&1 | grep -q \"e2e-v1-pkg\"; then\n+if CONDARC=\"\
+        $CONDARC_TEST\" conda_search_fixture; then\n     pass \"11.5: .condarc channel URL format works\"\n else\n\
+        -    # Some conda versions don't respect CONDARC env var the same way\n-    # Try configuring globally\n\
+        -    conda config --prepend channels \"$BACKEND_URL/conda/$REPO_KEY\" 2>/dev/null\n-    if conda search\
+        \ \"e2e-v1-pkg\" 2>&1 | grep -q \"e2e-v1-pkg\"; then\n-        pass \"11.5: .condarc channel URL format\
+        \ works (global config)\"\n-    else\n-        fail \"11.5: .condarc channel URL format failed\"\n-    fi\n\
+        +    fail \"11.5: .condarc channel URL format failed\"\n fi\n \n # mamba (if available)\n@@ -739,14 +749,14\
+        \ @@ if [ -n \"$REPO_ID_LOCAL2\" ]; then\n \n     if [ -n \"$VIRT_ID\" ]; then\n         # Add members:\
+        \ main repo (priority 1) and local2 (priority 2)\n-        curl -sf -X POST \"$BACKEND_URL/api/v1/repositories/$VIRT_ID/members\"\
+        \ \\\n+        curl -sf -X POST \"$BACKEND_URL/api/v1/repositories/$VIRT_KEY/members\" \\\n            \
+        \ -H \"Authorization: Bearer $TOKEN\" \\\n             -H 'Content-Type: application/json' \\\n-       \
+        \     -d \"{\\\"member_repo_id\\\":\\\"$REPO_ID\\\",\\\"priority\\\":1}\" > /dev/null 2>&1 || true\n-  \
+        \      curl -sf -X POST \"$BACKEND_URL/api/v1/repositories/$VIRT_ID/members\" \\\n+            -d \"{\\\"\
+        member_key\\\":\\\"$REPO_KEY\\\",\\\"priority\\\":1}\" > /dev/null || { fail \"Add first virtual member\"\
+        ; exit 1; }\n+        curl -sf -X POST \"$BACKEND_URL/api/v1/repositories/$VIRT_KEY/members\" \\\n     \
+        \        -H \"Authorization: Bearer $TOKEN\" \\\n             -H 'Content-Type: application/json' \\\n-\
+        \            -d \"{\\\"member_repo_id\\\":\\\"$REPO_ID_LOCAL2\\\",\\\"priority\\\":2}\" > /dev/null 2>&1\
+        \ || true\n+            -d \"{\\\"member_key\\\":\\\"$REPO_KEY_LOCAL2\\\",\\\"priority\\\":2}\" > /dev/null\
+        \ || { fail \"Add second virtual member\"; exit 1; }\n \n         # 7.1: Fetch virtual repo repodata\n \
+        \        VIRT_RD=$(curl -sf \"$BACKEND_URL/conda/$VIRT_KEY/noarch/repodata.json\" 2>/dev/null)\ndiff --git\
+        \ a/scripts/native-tests/test-curation.sh b/scripts/native-tests/test-curation.sh\nindex 91cd40c8..f5aba7d2\
+        \ 100755\n--- a/scripts/native-tests/test-curation.sh\n+++ b/scripts/native-tests/test-curation.sh\n@@ -132,6\
+        \ +132,16 @@ psql -c \"UPDATE repositories SET\n \n pass \"Enable curation on RPM staging repo\"\n \n+#\
+        \ Fail closed without a trusted upstream key, then enable the signed fixture.\n+# The fixture workflow signs\
+        \ repomd.xml and pins primary.xml.gz's digest.\n+curl -fsS -X POST \"$CURATION_URL/repos/curation-rpm-staging/sync\"\
+        \ -H \"$AUTH\" | jq -e '.succeeded == false' >/dev/null || { fail \"Keyless sync reported success\"; exit\
+        \ 1; }\n+KEYLESS_COUNT=$(curl -fsS \"$CURATION_URL/packages?staging_repo_id=$STAGING_RPM_ID&limit=50\" -H\
+        \ \"$AUTH\" | jq 'length')\n+[ \"$KEYLESS_COUNT\" = \"0\" ] || { fail \"Keyless RPM sync ingested packages\"\
+        ; exit 1; }\n+pass \"Keyless RPM sync refuses untrusted metadata\"\n+TRUST_PAYLOAD=$(jq -n --rawfile key\
+        \ \"${CURATION_GPG_KEY:?CURATION_GPG_KEY must name the fixture public key}\" '{trusted_gpg_key:$key}')\n\
+        +curl -fsS -X PATCH \"$API_URL/repositories/curation-rpm-remote\" -H \"$AUTH\" -H 'Content-Type: application/json'\
+        \ -d \"$TRUST_PAYLOAD\" >/dev/null\n+curl -fsS -X POST \"$CURATION_URL/repos/curation-rpm-staging/sync\"\
+        \ -H \"$AUTH\" | jq -e '.succeeded == true' >/dev/null || { fail \"Signed sync failed\"; exit 1; }\n+\n\
+        \ # Poll the packages endpoint until 6 packages appear (max 90 seconds)\n echo \"  Waiting for curation\
+        \ sync (up to 90s)...\"\n SYNC_OK=false\ndiff --git a/scripts/native-tests/test-hex.sh b/scripts/native-tests/test-hex.sh\n\
+        index 3b539a8e..3d5b2aea 100755\n--- a/scripts/native-tests/test-hex.sh\n+++ b/scripts/native-tests/test-hex.sh\n\
+        @@ -91,22 +91,21 @@ else\n     exit 1\n fi\n \n-# ---- Test 2: Package info endpoint ----\n-echo \"==> [2/6]\
+        \ Verifying package info endpoint...\"\n-INFO_CODE=$(curl -s -o \"$WORK_DIR/info.json\" -w \"%{http_code}\"\
+        \ \\\n-  \"$HEX_URL/packages/$PKG_NAME\")\n-if [ \"$INFO_CODE\" = \"200\" ]; then\n-    PKG=$(jq -r '.name\
+        \ // \"\"' \"$WORK_DIR/info.json\" 2>/dev/null || echo \"\")\n-    if [ \"$PKG\" = \"$PKG_NAME\" ]; then\n\
+        -        echo \"  Package info returned correctly\"\n-    else\n-        echo \"  FAIL: Package name mismatch\
+        \ (got: $PKG)\"\n-        exit 1\n-    fi\n-else\n-    echo \"  FAIL: Package info returned HTTP $INFO_CODE\"\
+        \n-    exit 1\n-fi\n+# ---- Test 2: Signed protobuf registry and native Hex verification ----\n+echo \"\
+        ==> [2/6] Verifying signed registry resources...\"\n+curl -fsS \"$HEX_URL/public_key\" -o \"$WORK_DIR/registry-key.pem\"\
+        \n+for resource in \"packages/$PKG_NAME\" names versions; do\n+    file=\"$WORK_DIR/$(basename \"$resource\"\
+        ).gz\"\n+    curl -fsS \"$HEX_URL/$resource\" -o \"$file\"\n+    python3 \"$(dirname \"$0\")/verify-hex-resource.py\"\
+        \ \"$file\" \"$WORK_DIR/registry-key.pem\" \"$PKG_NAME\" \"$TEST_VERSION\" \"$HEX_REPO_KEY\" \"$resource\"\
+        \n+done\n+command -v mix >/dev/null || { echo \"FAIL: native Mix client is required\"; exit 1; }\n+export\
+        \ MIX_HOME=\"$WORK_DIR/mix\" HEX_HOME=\"$WORK_DIR/hex\"\n+mix local.hex 2.5.2 --force\n+mix hex.repo add\
+        \ \"$HEX_REPO_KEY\" \"$HEX_URL\" --public-key=\"$WORK_DIR/registry-key.pem\"\n+mix hex.package fetch \"\
+        $PKG_NAME\" \"$TEST_VERSION\" --repo=\"$HEX_REPO_KEY\" --output=\"$WORK_DIR/native.tar\"\n+cmp \"$TARBALL\"\
+        \ \"$WORK_DIR/native.tar\"\n+echo \"  Native Hex fetched and verified the exact published tarball\"\n \n\
+        \ # ---- Test 3: Download tarball ----\n echo \"==> [3/6] Downloading tarball...\"\n@@ -144,45 +143,6 @@\
+        \ else\n     exit 1\n fi\n \n-# ---- Test 5: List names endpoint ----\n-echo \"==> [5/6] Verifying names\
+        \ endpoint...\"\n-NAMES_CODE=$(curl -s -o \"$WORK_DIR/names.json\" -w \"%{http_code}\" \\\n-  \"$HEX_URL/names\"\
+        )\n-if [ \"$NAMES_CODE\" = \"200\" ]; then\n-    if grep -q \"$PKG_NAME\" \"$WORK_DIR/names.json\" 2>/dev/null;\
+        \ then\n-        echo \"  Names endpoint lists $PKG_NAME\"\n-    else\n-        echo \"  FAIL: Names endpoint\
+        \ doesn't contain $PKG_NAME\"\n-        cat \"$WORK_DIR/names.json\"\n-        exit 1\n-    fi\n-else\n\
+        -    echo \"  FAIL: Names endpoint returned HTTP $NAMES_CODE\"\n-    exit 1\n-fi\n-\n-# ---- Test 6: List\
+        \ versions endpoint ----\n-echo \"==> [6/6] Verifying versions endpoint...\"\n-VERSIONS_CODE=$(curl -s -o\
+        \ \"$WORK_DIR/versions.json\" -w \"%{http_code}\" \\\n-  \"$HEX_URL/versions\")\n-if [ \"$VERSIONS_CODE\"\
+        \ = \"200\" ]; then\n-    if grep -q \"$TEST_VERSION\" \"$WORK_DIR/versions.json\" 2>/dev/null; then\n-\
+        \        echo \"  Versions endpoint lists $PKG_NAME@$TEST_VERSION\"\n-    else\n-        echo \"  FAIL:\
+        \ Versions endpoint doesn't contain $TEST_VERSION\"\n-        cat \"$WORK_DIR/versions.json\"\n-       \
+        \ exit 1\n-    fi\n-else\n-    echo \"  FAIL: Versions endpoint returned HTTP $VERSIONS_CODE\"\n-    exit\
+        \ 1\n-fi\n-\n-echo \"\"\n-echo \"All Hex native client tests PASSED\"\n-echo \"   Publish (raw tarball)\
+        \           OK\"\n-echo \"   Package info                    OK\"\n-echo \"   Tarball download         \
+        \       OK\"\n-echo \"   Tarball content verification    OK\"\n-echo \"   Names listing                \
+        \   OK\"\n-echo \"   Versions listing                OK\"\n+echo \"==> [5/6] Signed names resource verified\"\
+        \n+echo \"==> [6/6] Signed versions resource verified\"\n+echo \"PASS: Hex publish, signed registry, native\
+        \ fetch and content round-trip\"\ndiff --git a/scripts/native-tests/test-protobuf.sh b/scripts/native-tests/test-protobuf.sh\n\
+        index ef66cecf..175d9534 100755\n--- a/scripts/native-tests/test-protobuf.sh\n+++ b/scripts/native-tests/test-protobuf.sh\n\
+        @@ -115,6 +115,13 @@ if [ -z \"$COMMIT_ID\" ] || [ \"$COMMIT_ID\" = \"null\" ]; then\n fi\n echo \"  Uploaded\
+        \ commit: ${COMMIT_ID:0:16}...\"\n \n+# An unauthenticated Connect request must still be refused.\n+UNAUTH_STATUS=$(curl\
+        \ -sS -o /dev/null -w \"%{http_code}\" -X POST \\\n+  \"$REGISTRY_URL/proto/$REPO_KEY/buf.registry.module.v1.ModuleService/GetModules\"\
+        \ \\\n+  -H \"Content-Type: application/json\" \\\n+  -d '{\"moduleRefs\": [{\"owner\": \"acme\", \"module\"\
+        : \"payments\"}]}')\n+[ \"$UNAUTH_STATUS\" = \"401\" ] || { echo \"ERROR: unauthenticated RPC returned $UNAUTH_STATUS\"\
+        ; exit 1; }\n+\n # --------------------------------------------------------------------------\n # Test 2:\
+        \ GetModules \u2014 verify module exists\n # --------------------------------------------------------------------------\n\
+        @@ -122,6 +129,7 @@ echo \"==> Test 2: GetModules...\"\n \n MODULES_RESP=$(curl -sf -X POST \\\n   \"$REGISTRY_URL/proto/$REPO_KEY/buf.registry.module.v1.ModuleService/GetModules\"\
+        \ \\\n+  -H \"Authorization: Bearer $TOKEN\" \\\n   -H \"Content-Type: application/json\" \\\n   -d '{\"\
+        moduleRefs\": [{\"owner\": \"acme\", \"module\": \"payments\"}]}')\n \n@@ -140,6 +148,7 @@ echo \"==> Test\
+        \ 3: GetLabels...\"\n \n LABELS_RESP=$(curl -sf -X POST \\\n   \"$REGISTRY_URL/proto/$REPO_KEY/buf.registry.module.v1.LabelService/GetLabels\"\
+        \ \\\n+  -H \"Authorization: Bearer $TOKEN\" \\\n   -H \"Content-Type: application/json\" \\\n   -d '{\"\
+        labelRefs\": [{\"owner\": \"acme\", \"module\": \"payments\"}]}')\n \n@@ -158,6 +167,7 @@ echo \"==> Test\
+        \ 4: GetCommits (resolve by label)...\"\n \n COMMITS_RESP=$(curl -sf -X POST \\\n   \"$REGISTRY_URL/proto/$REPO_KEY/buf.registry.module.v1.CommitService/GetCommits\"\
+        \ \\\n+  -H \"Authorization: Bearer $TOKEN\" \\\n   -H \"Content-Type: application/json\" \\\n   -d '{\"\
+        resourceRefs\": [{\"owner\": \"acme\", \"module\": \"payments\", \"label\": \"main\"}]}')\n \n@@ -175,6\
+        \ +185,7 @@ echo \"==> Test 5: Download module (buf dep update equivalent)...\"\n \n DOWNLOAD_RESP=$(curl\
+        \ -sf -X POST \\\n   \"$REGISTRY_URL/proto/$REPO_KEY/buf.registry.module.v1beta1.DownloadService/Download\"\
+        \ \\\n+  -H \"Authorization: Bearer $TOKEN\" \\\n   -H \"Content-Type: application/json\" \\\n   -d '{\"\
+        values\": [{\"resourceRef\": {\"owner\": \"acme\", \"module\": \"payments\", \"label\": \"v1.0.0\"}}]}')\n\
+        \ \n@@ -202,6 +213,7 @@ echo \"==> Test 6: ListCommits...\"\n \n LIST_RESP=$(curl -sf -X POST \\\n   \"\
+        $REGISTRY_URL/proto/$REPO_KEY/buf.registry.module.v1.CommitService/ListCommits\" \\\n+  -H \"Authorization:\
+        \ Bearer $TOKEN\" \\\n   -H \"Content-Type: application/json\" \\\n   -d '{\"owner\": \"acme\", \"module\"\
+        : \"payments\", \"pageSize\": 10}')\n \n@@ -237,6 +249,7 @@ echo \"==> Test 8: GetResources...\"\n \n RESOURCES_RESP=$(curl\
+        \ -sf -X POST \\\n   \"$REGISTRY_URL/proto/$REPO_KEY/buf.registry.module.v1.ResourceService/GetResources\"\
+        \ \\\n+  -H \"Authorization: Bearer $TOKEN\" \\\n   -H \"Content-Type: application/json\" \\\n   -d '{\"\
+        resourceRefs\": [{\"owner\": \"acme\", \"module\": \"payments\", \"label\": \"main\"}]}')\n \ndiff --git\
+        \ a/scripts/native-tests/verify-hex-resource.py b/scripts/native-tests/verify-hex-resource.py\nnew file\
+        \ mode 100644\nindex 00000000..198a28cd\n--- /dev/null\n+++ b/scripts/native-tests/verify-hex-resource.py\n\
+        @@ -0,0 +1,72 @@\n+\"\"\"Verify Hex registry signatures and the fixture's protobuf identities.\"\"\"\n+import\
+        \ gzip\n+import hashlib\n+from pathlib import Path\n+import subprocess\n+import sys\n+import tempfile\n\
+        +\n+\n+def fields(data):\n+    \"\"\"Decode the small protobuf wire subset used by Hex registry resources.\"\
+        \"\"\n+    position = 0\n+\n+    def varint():\n+        nonlocal position\n+        value = 0\n+      \
+        \  for shift in range(0, 70, 7):\n+            assert position < len(data), \"truncated protobuf varint\"\
+        \n+            byte = data[position]\n+            position += 1\n+            value |= (byte & 127) <<\
+        \ shift\n+            if byte < 128:\n+                return value\n+        raise AssertionError(\"oversized\
+        \ protobuf varint\")\n+\n+    result = {}\n+    while position < len(data):\n+        tag = varint()\n+\
+        \        number, wire = tag >> 3, tag & 7\n+        assert number, \"invalid protobuf field\"\n+       \
+        \ if wire == 0:\n+            value = varint()\n+        elif wire == 2:\n+            length = varint()\n\
+        +            assert position + length <= len(data), \"truncated protobuf field\"\n+            value = data[position:position\
+        \ + length]\n+            position += length\n+        else:\n+            raise AssertionError(f\"unexpected\
+        \ protobuf wire type {wire}\")\n+        result.setdefault(number, []).append(value)\n+    return result\n\
+        +\n+\n+resource, public_key, name, version, repository, kind = sys.argv[1:]\n+envelope = fields(gzip.decompress(Path(resource).read_bytes()))\n\
+        +assert len(envelope[1]) == len(envelope[2]) == 1\n+payload, signature = envelope[1][0], envelope[2][0]\n\
+        +with tempfile.TemporaryDirectory() as directory:\n+    path = Path(directory)\n+    (path / \"payload\"\
+        ).write_bytes(payload)\n+    (path / \"signature\").write_bytes(signature)\n+    subprocess.run([\"openssl\"\
+        , \"dgst\", \"-sha512\", \"-verify\", public_key,\n+                    \"-signature\", str(path / \"signature\"\
+        ), str(path / \"payload\")], check=True)\n+message = fields(payload)\n+if kind.startswith(\"packages/\"\
+        ):\n+    assert message[2] == [name.encode()]\n+    assert message[3] == [repository.encode()]\n+    releases\
+        \ = [fields(value) for value in message[1]]\n+    release = next(value for value in releases if value[1]\
+        \ == [version.encode()])\n+    tarball = Path(resource).parent / f\"{name}-{version}.tar\"\n+    assert\
+        \ release[5] == [hashlib.sha256(tarball.read_bytes()).digest()]\n+    import tarfile\n+    with tarfile.open(tarball)\
+        \ as archive:\n+        expected = archive.extractfile(\"CHECKSUM\").read().strip().decode()\n+    assert\
+        \ release[2] == [bytes.fromhex(expected)]\n+else:\n+    assert message[2] == [repository.encode()]\n+  \
+        \  package = next(fields(value) for value in message[1]\n+                   if fields(value)[1] == [name.encode()])\n\
+        +    if kind == \"versions\":\n+        assert version.encode() in package[2]\n+print(f\"PASS: authenticated\
+        \ Hex {kind}\")\nPATCH\ngit apply --check /tmp/native-setups.patch\ngit apply /tmp/native-setups.patch\n\
+        for script in scripts/native-tests/test-{hex,protobuf,conda,curation}.sh; do bash -n \"$script\"; done\n"
     - name: Verify exact product source
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
         actual=$(gh api "repos/${{ matrix.image_repo }}/actions/runs/${{ matrix.image_run }}" --jq .head_sha)
         test "$actual" = "$PRODUCT_SHA"
+    - name: Wait for pinned source image (30-minute limit)
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: "set -euo pipefail\nfor attempt in $(seq 1 90); do\n  count=$(gh api \"repos/${{ matrix.image_repo }}/actions/runs/${{\
+        \ matrix.image_run }}/artifacts?name=backend-image\" --jq '.artifacts | length')\n  if [ \"$count\" -gt\
+        \ 0 ]; then exit 0; fi\n  image_result=$(gh api \"repos/${{ matrix.image_repo }}/actions/runs/${{ matrix.image_run\
+        \ }}/jobs?per_page=100\" --jq '.jobs[] | select(.name == \"\U0001F433 Build Backend Image\") | .conclusion\
+        \ // \"pending\"')\n  if [ \"$image_result\" = failure ] || [ \"$image_result\" = cancelled ]; then echo\
+        \ \"Source image build failed: $image_result\"; exit 1; fi\n  echo \"Waiting for exact-source backend image\
+        \ ($attempt/90)\"\n  sleep 20\ndone\necho 'Timed out waiting for source image'; exit 1\n"
     - name: Download exact-source CI image
       uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
       with:
@@ -67,6 +269,23 @@ jobs:
         set +a
         bash scripts/pki/generate-certs.sh .pki > reports/pki.log 2>&1
         bash scripts/pki/generate-gpg.sh .pki >> reports/pki.log 2>&1
+        if [ "$PROFILE" = curation ]; then
+          export GNUPGHOME="$(mktemp -d)"
+          chmod 700 "$GNUPGHOME"
+          gpg --batch --import .pki/gpg-signing.key >> reports/pki.log 2>&1
+          python3 - <<'REPOMD'
+        from pathlib import Path
+        import hashlib
+        p=Path('scripts/native-tests/fixtures/curation/rpm/repodata')
+        body=(p/'primary.xml.gz').read_bytes()
+        (p/'repomd.xml').write_text('<repomd xmlns="http://linux.duke.edu/metadata/repo"><data type="primary"><location href="repodata/primary.xml.gz"/><checksum type="sha256">'+hashlib.sha256(body).hexdigest()+'</checksum><size>'+str(len(body))+'</size></data></repomd>')
+        REPOMD
+          gpg --batch --yes --armor --detach-sign scripts/native-tests/fixtures/curation/rpm/repodata/repomd.xml >> reports/pki.log 2>&1
+          gpg --batch --verify scripts/native-tests/fixtures/curation/rpm/repodata/repomd.xml.asc scripts/native-tests/fixtures/curation/rpm/repodata/repomd.xml >> reports/pki.log 2>&1
+          gpgconf --kill gpg-agent
+          rm -rf "$GNUPGHOME"
+          unset GNUPGHOME
+        fi
         if [ "$PROFILE" = terraform-mirror ]; then
           openssl req -x509 -newkey rsa:2048 -nodes -keyout .pki/ca.key -out .pki/ca.crt -days 2 -subj '/CN=Native validation CA' > reports/tls.log 2>&1
           openssl req -newkey rsa:2048 -nodes -keyout .pki/server.key -out .pki/server.csr -subj '/CN=native.test' >> reports/tls.log 2>&1
@@ -90,6 +309,7 @@ jobs:
           for k in ('ADMIN_PASS','ADMIN_PASSWORD','AK_TEST_ADMIN_PASSWORD'):env[k]=os.environ[k]
           if 'REGISTRY_URL' in env:env['REGISTRY_URL']='http://backend.test:8080'
         s['hex-test']['environment']['HEX_REPO_KEY']='ci-hex'
+        s['hex-test']['image']='elixir:1.19-alpine'
         s['protobuf-test']['environment']['REPO_KEY']='ci-protobuf'
         for name in ('hex','protobuf'):
          s[name+'-test']['command']=['sh','-c',f'apk add --no-cache bash curl jq tar coreutils python3 openssl perl-utils >/dev/null 2>&1 && bash /scripts/test-{name}.sh']
@@ -99,6 +319,8 @@ jobs:
          s['mock-upstream']['healthcheck']['test']=['CMD','wget','-q','--spider','http://127.0.0.1/rpm/repodata/repomd.xml']
          s['mock-upstream']['networks']={'e2e-test-network':{'aliases':['mock-upstream.test']}}
          s['curation-test']['environment']['MOCK_UPSTREAM_URL']='http://mock-upstream.test'
+         s['curation-test']['environment']['CURATION_GPG_KEY']='/fixture/gpg-signing.pub'
+         s['curation-test'].setdefault('volumes',[]).append({'type':'bind','source':str(Path('.pki/gpg-signing.pub').resolve()),'target':'/fixture/gpg-signing.pub','read_only':True})
         if os.environ['PROFILE']=='terraform-mirror':
          s['tls-fixture']={'image':'nginx:alpine','volumes':[str(Path('.pki').resolve())+':/fixture:ro',str(Path('tls.conf').resolve())+':/etc/nginx/conf.d/default.conf:ro'],'networks':{'e2e-test-network':{'aliases':['native.test']}},'depends_on':{'backend':{'condition':'service_healthy'}}}
          v=s['terraform-mirror-test'];v['environment'].update({'REGISTRY_URL':'https://native.test:8443','SSL_CERT_FILE':'/fixture/ca.crt','CURL_CA_BUNDLE':'/fixture/ca.crt','RUN_TERRAFORM_CLI':'1'})
@@ -194,13 +416,12 @@ jobs:
           ok('PUT',path,package.read_bytes(),{'Content-Type':'application/vnd.debian.binary-package'})
           assert ok('GET',path)==package.read_bytes()
           lists=d/'lists';(lists/'partial').mkdir(parents=True);cache=d/'apt-cache';(cache/'archives/partial').mkdir(parents=True)
-          sources=d/'sources.list';sources.write_text('deb [trusted=yes] '+BASE+'/debian/'+key+' /\n')
+          sources=d/'sources.list';sources.write_text('deb [trusted=yes] '+BASE+'/debian/'+key+' stable main\n')
           parts=d/'parts';parts.mkdir()
           opts=['-o','Dir::Etc::sourcelist='+str(sources),'-o','Dir::Etc::sourceparts='+str(parts),'-o','Dir::State::lists='+str(lists),'-o','Dir::Cache='+str(cache),'-o','APT::Get::List-Cleanup=0']
-          cmd(['sudo','apt-get',*opts,'update']);(d/'download').mkdir();cmd(['sudo','apt-get',*opts,'download','ca-native-deb=1.0.0'],cwd=d/'download')
+          cmd(['apt-get',*opts,'update']);(d/'download').mkdir();cmd(['apt-get',*opts,'download','ca-native-deb=1.0.0'],cwd=d/'download')
           assert (d/'download'/package.name).read_bytes()==package.read_bytes()
           print('PASS: strict DEB build/upload, native APT metadata/download and byte equality (unsigned test fixture)')
-
         STRICT
         if [[ "$PROFILE" =~ ^(go|helm|rpm|deb)$ ]]; then
           docker compose -f validation-compose.json up -d --no-build --wait --wait-timeout 180 postgres backend > reports/start.log 2>&1
