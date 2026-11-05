@@ -10,7 +10,7 @@ permissions:
   contents: read
   actions: read
 concurrency:
-  group: ca-5194-extended
+  group: ca-5194-extended-${{ github.run_id }}
   cancel-in-progress: false
 jobs:
   image:
