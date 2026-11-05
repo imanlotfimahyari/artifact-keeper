@@ -357,7 +357,7 @@ jobs:
         for name,v in s.items():
          if name.endswith('-test'):
           env=v.setdefault('environment',{})
-          for k in ('ADMIN_PASS','ADMIN_PASSWORD','AK_TEST_ADMIN_PASSWORD','REGISTRY_PASS'):env[k]=os.environ[k]
+          for k in ('ADMIN_PASS','ADMIN_PASSWORD','AK_TEST_ADMIN_PASSWORD','REGISTRY_PASS'):env[k]=os.environ['ADMIN_PASS']
           for k in ('REGISTRY_URL','API_URL','BACKEND_URL'):
            if k in env:env[k]='http://backend.test:8080'
         s['hex-test']['environment']['HEX_REPO_KEY']='ci-hex'
@@ -378,6 +378,7 @@ jobs:
          v=s['terraform-mirror-test'];v['environment'].update({'REGISTRY_URL':'https://native.test:8443','SSL_CERT_FILE':'/fixture/ca.crt','CURL_CA_BUNDLE':'/fixture/ca.crt','RUN_TERRAFORM_CLI':'1'})
          v.setdefault('volumes',[]).append({'type':'bind','source':str(Path('.pki').resolve()),'target':'/fixture','read_only':True})
          v.setdefault('depends_on',{})['tls-fixture']={'condition':'service_started'}
+        s['docker-test']['command']=['sh','-c','apk add --no-cache bash curl jq python3 >/dev/null 2>&1 && bash /scripts/test-docker.sh']
         if os.environ['PROFILE']=='docker':
          v=s['docker-test'];v.pop('networks',None);v['network_mode']='host';v['environment']['REGISTRY_URL']='localhost:18080'
         s['maven-test']['environment']['REGISTRY_URL']='http://backend.test:8080/maven/test-maven'
