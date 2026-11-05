@@ -1,0 +1,32 @@
+name: Publish validated CA merge
+on:
+  push:
+    branches: [validation/5194-extra-hosted]
+    paths: [.github/workflows/ca-publish-validated-merge.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: fix/5193-custom-ca-rotation
+          fetch-depth: 0
+      - name: Verify unchanged PR head and fast-forward to validated commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected=7f7345abb9998e74d3c4c80ba1da86e80ebb01a0
+          validated=945c542c574b68e6934aad4565f1f8575465ad0f
+          target=fix/5193-custom-ca-rotation
+          test "$(git rev-parse HEAD)" = "$expected"
+          git fetch origin "$validated"
+          git merge-base --is-ancestor "$expected" "$validated"
+          test "$(git rev-parse "$validated^{tree}")" = 661fdcd210e8dcf1b784ebde6acc60c296b91235
+          git merge --ff-only "$validated"
+          git push origin "HEAD:refs/heads/$target"
