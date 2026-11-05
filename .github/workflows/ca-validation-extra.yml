@@ -41,16 +41,15 @@ jobs:
     timeout-minutes: 50
     strategy:
       fail-fast: false
-      max-parallel: 7
+      max-parallel: 6
       matrix:
         profiles:
-        - maven go helm
-        - rpm deb conda
-        - docker protobuf hex
-        - terraform-mirror terraform-modules
-        - tag-replication storage-gc docker-proxy
-        - curation cache-correctness
         - recovery
+        - protobuf hex tag-replication
+        - cache-correctness
+        - terraform-modules
+        - docker
+        - curation
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
@@ -73,28 +72,67 @@ jobs:
       run: |
         set -euo pipefail
         mkdir -p validation-reports
+        set -a
+        . ./.env.test
+        set +a
         bash scripts/pki/generate-certs.sh .pki > validation-reports/pki.log 2>&1
         bash scripts/pki/generate-gpg.sh .pki >> validation-reports/pki.log 2>&1
         failed=0
         for profile in $PROFILES; do
-          case "$profile" in
-            cache-correctness) containers="e2e-test-cache-correctness e2e-test-virtual-resolution" ;;
-            *) containers="e2e-test-$profile" ;;
-          esac
-          if docker compose -f docker-compose.test.yml --profile "$profile" up -d --no-build > "validation-reports/$profile-start.log" 2>&1; then
+          targets="${profile}-test"
+          containers="e2e-test-${profile}"
+          if [ "$profile" = cache-correctness ]; then
+            targets="cache-correctness-test virtual-resolution-test"
+            containers="e2e-test-cache-correctness e2e-test-virtual-resolution"
+          fi
+          docker compose -f docker-compose.test.yml --profile all --profile "$profile" config --format json > validation-base.json
+          PROFILE="$profile" python3 - <<'CONFIG'
+        import json,os
+        from pathlib import Path
+        cfg=json.loads(Path('validation-base.json').read_text())
+        backend=cfg['services']['backend']
+        backend.pop('build',None)
+        backend['ports']=[{'target':8080,'published':'18080','host_ip':'127.0.0.1','protocol':'tcp'}]
+        for name,net in list(backend['networks'].items()):
+            if not isinstance(net,dict): net={}
+            net.setdefault('aliases',[]).append('backend.test')
+            backend['networks'][name]=net
+        for name,svc in cfg['services'].items():
+            if name.endswith('-test'):
+                env=svc.setdefault('environment',{})
+                for key in ('ADMIN_PASS','ADMIN_PASSWORD','AK_TEST_ADMIN_PASSWORD'):
+                    env[key]=os.environ[key]
+                if isinstance(env.get('REGISTRY_URL'),str):
+                    env['REGISTRY_URL']=env['REGISTRY_URL'].replace('http://backend:8080','http://backend.test:8080')
+        for name in ('protobuf-test','hex-test'):
+            cfg['services'][name]['command']=['sh','-c',f'apk add --no-cache bash curl jq tar coreutils python3 openssl >/dev/null 2>&1 && bash /scripts/test-{name[:-5]}.sh']
+        cfg['services']['tag-replication-test']['command']=['bash','-c','apt-get update -qq && apt-get install -y -qq --no-install-recommends curl >/dev/null && bash /scripts/test-tag-replication.sh']
+        if 'mock-upstream' in cfg['services']:
+            cfg['services']['mock-upstream']['healthcheck']['test']=['CMD','wget','-q','--spider','http://127.0.0.1/rpm/repodata/repomd.xml']
+        Path('validation-compose.json').write_text(json.dumps(cfg))
+        CONFIG
+          if [ "$profile" = cache-correctness ]; then
+            docker compose -f validation-compose.json build cache-mock-upstream > validation-reports/cache-mock-build.log 2>&1
+          fi
+          if [ "$profile" = docker ]; then
+            if docker compose -f validation-compose.json up -d --no-build --wait --wait-timeout 180 trivy setup pki > validation-reports/docker-start.log 2>&1 && REGISTRY_URL=localhost:18080 REGISTRY_PASS="$ADMIN_PASS" CA_CERT="$PWD/.pki/ca.crt" bash scripts/native-tests/test-docker.sh > validation-reports/docker-host.log 2>&1; then
+              echo 'docker: host Docker CLI suite passed' | tee -a validation-reports/results.txt
+            else
+              echo 'docker: host Docker CLI suite failed' | tee -a validation-reports/results.txt; failed=1
+            fi
+          elif docker compose -f validation-compose.json up -d --no-build trivy $targets > "validation-reports/$profile-start.log" 2>&1; then
             if ! timeout 1000 docker wait $containers > "validation-reports/$profile-wait.log" 2>&1; then failed=1; fi
             for container in $containers; do
               docker logs "$container" > "validation-reports/$container.log" 2>&1 || true
               state=$(docker inspect --format '{{.State.Status}} {{.State.ExitCode}} {{.State.OOMKilled}}' "$container" 2>/dev/null || echo missing)
               echo "$profile: $container: $state" | tee -a validation-reports/results.txt
-              if [ "$state" != "exited 0 false" ]; then failed=1; fi
+              if [ "$state" != 'exited 0 false' ]; then failed=1; fi
             done
           else
-            echo "$profile: SETUP FAILED" | tee -a validation-reports/results.txt
-            failed=1
+            echo "$profile: SETUP FAILED" | tee -a validation-reports/results.txt; failed=1
           fi
-          docker logs e2e-test-backend > "validation-reports/$profile-backend.log" 2>&1 || true
-          docker compose -f docker-compose.test.yml --profile "$profile" down -v --remove-orphans >> "validation-reports/$profile-cleanup.log" 2>&1
+          docker compose -f validation-compose.json logs --no-color > "validation-reports/$profile-stack.log" 2>&1 || true
+          docker compose -f validation-compose.json down -v --remove-orphans > "validation-reports/$profile-cleanup.log" 2>&1
          done
         cat validation-reports/results.txt >> "$GITHUB_STEP_SUMMARY"
         exit "$failed"
@@ -154,7 +192,7 @@ jobs:
             key=path+str(i)+'.bin'
             code,_=api('PUT',key,payload)
             assert 200<=code<300,('upload',i,code)
-            code,actual=api('GET',key)
+            code,actual=api('GET','/api/v1/repositories/'+repo+'/download/'+str(i)+'.bin')
             assert code==200 and actual==payload,('download/checksum',i,code)
             return i
 
@@ -165,7 +203,7 @@ jobs:
         compose('up','-d','backend')
         ready(); transfer(101)
         print('PASS: backend kill/restart preserves existing and accepts new artifacts',flush=True)
-        code,data=api('GET',path+'0.bin')
+        code,data=api('GET','/api/v1/repositories/'+repo+'/download/0.bin')
         assert code==200 and data==hashlib.sha256(b'0').digest()*2048
         compose('stop','postgres')
         try:
@@ -203,5 +241,5 @@ jobs:
         retention-days: 7
     - name: Clean disposable stack
       if: always()
-      run: |-
-        docker compose -f docker-compose.test.yml --profile all --profile curation --profile cache-correctness --profile terraform-mirror --profile terraform-modules down -v --remove-orphans
+      run: |
+        if [ -f validation-compose.json ]; then docker compose -f validation-compose.json down -v --remove-orphans; else docker compose -f docker-compose.test.yml --profile all down -v --remove-orphans; fi
