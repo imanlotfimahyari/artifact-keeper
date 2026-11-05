@@ -132,6 +132,16 @@ psql -c "UPDATE repositories SET
 
 pass "Enable curation on RPM staging repo"
 
+# Fail closed without a trusted upstream key, then enable the signed fixture.
+# The fixture workflow signs repomd.xml and pins primary.xml.gz's digest.
+curl -fsS -X POST "$CURATION_URL/repos/curation-rpm-staging/sync" -H "$AUTH" | jq -e '.succeeded == false' >/dev/null || { fail "Keyless sync reported success"; exit 1; }
+KEYLESS_COUNT=$(curl -fsS "$CURATION_URL/packages?staging_repo_id=$STAGING_RPM_ID&limit=50" -H "$AUTH" | jq 'length')
+[ "$KEYLESS_COUNT" = "0" ] || { fail "Keyless RPM sync ingested packages"; exit 1; }
+pass "Keyless RPM sync refuses untrusted metadata"
+TRUST_PAYLOAD=$(jq -n --rawfile key "${CURATION_GPG_KEY:?CURATION_GPG_KEY must name the fixture public key}" '{trusted_gpg_key:$key}')
+curl -fsS -X PATCH "$API_URL/repositories/curation-rpm-remote" -H "$AUTH" -H 'Content-Type: application/json' -d "$TRUST_PAYLOAD" >/dev/null
+curl -fsS -X POST "$CURATION_URL/repos/curation-rpm-staging/sync" -H "$AUTH" | jq -e '.succeeded == true' >/dev/null || { fail "Signed sync failed"; exit 1; }
+
 # Poll the packages endpoint until 6 packages appear (max 90 seconds)
 echo "  Waiting for curation sync (up to 90s)..."
 SYNC_OK=false

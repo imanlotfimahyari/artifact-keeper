@@ -115,6 +115,13 @@ if [ -z "$COMMIT_ID" ] || [ "$COMMIT_ID" = "null" ]; then
 fi
 echo "  Uploaded commit: ${COMMIT_ID:0:16}..."
 
+# An unauthenticated Connect request must still be refused.
+UNAUTH_STATUS=$(curl -sS -o /dev/null -w "%{http_code}" -X POST \
+  "$REGISTRY_URL/proto/$REPO_KEY/buf.registry.module.v1.ModuleService/GetModules" \
+  -H "Content-Type: application/json" \
+  -d '{"moduleRefs": [{"owner": "acme", "module": "payments"}]}')
+[ "$UNAUTH_STATUS" = "401" ] || { echo "ERROR: unauthenticated RPC returned $UNAUTH_STATUS"; exit 1; }
+
 # --------------------------------------------------------------------------
 # Test 2: GetModules — verify module exists
 # --------------------------------------------------------------------------
@@ -122,6 +129,7 @@ echo "==> Test 2: GetModules..."
 
 MODULES_RESP=$(curl -sf -X POST \
   "$REGISTRY_URL/proto/$REPO_KEY/buf.registry.module.v1.ModuleService/GetModules" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"moduleRefs": [{"owner": "acme", "module": "payments"}]}')
 
@@ -140,6 +148,7 @@ echo "==> Test 3: GetLabels..."
 
 LABELS_RESP=$(curl -sf -X POST \
   "$REGISTRY_URL/proto/$REPO_KEY/buf.registry.module.v1.LabelService/GetLabels" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"labelRefs": [{"owner": "acme", "module": "payments"}]}')
 
@@ -158,6 +167,7 @@ echo "==> Test 4: GetCommits (resolve by label)..."
 
 COMMITS_RESP=$(curl -sf -X POST \
   "$REGISTRY_URL/proto/$REPO_KEY/buf.registry.module.v1.CommitService/GetCommits" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"resourceRefs": [{"owner": "acme", "module": "payments", "label": "main"}]}')
 
@@ -175,6 +185,7 @@ echo "==> Test 5: Download module (buf dep update equivalent)..."
 
 DOWNLOAD_RESP=$(curl -sf -X POST \
   "$REGISTRY_URL/proto/$REPO_KEY/buf.registry.module.v1beta1.DownloadService/Download" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"values": [{"resourceRef": {"owner": "acme", "module": "payments", "label": "v1.0.0"}}]}')
 
@@ -202,6 +213,7 @@ echo "==> Test 6: ListCommits..."
 
 LIST_RESP=$(curl -sf -X POST \
   "$REGISTRY_URL/proto/$REPO_KEY/buf.registry.module.v1.CommitService/ListCommits" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"owner": "acme", "module": "payments", "pageSize": 10}')
 
@@ -237,6 +249,7 @@ echo "==> Test 8: GetResources..."
 
 RESOURCES_RESP=$(curl -sf -X POST \
   "$REGISTRY_URL/proto/$REPO_KEY/buf.registry.module.v1.ResourceService/GetResources" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"resourceRefs": [{"owner": "acme", "module": "payments", "label": "main"}]}')
 

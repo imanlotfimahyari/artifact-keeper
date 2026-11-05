@@ -91,22 +91,21 @@ else
     exit 1
 fi
 
-# ---- Test 2: Package info endpoint ----
-echo "==> [2/6] Verifying package info endpoint..."
-INFO_CODE=$(curl -s -o "$WORK_DIR/info.json" -w "%{http_code}" \
-  "$HEX_URL/packages/$PKG_NAME")
-if [ "$INFO_CODE" = "200" ]; then
-    PKG=$(jq -r '.name // ""' "$WORK_DIR/info.json" 2>/dev/null || echo "")
-    if [ "$PKG" = "$PKG_NAME" ]; then
-        echo "  Package info returned correctly"
-    else
-        echo "  FAIL: Package name mismatch (got: $PKG)"
-        exit 1
-    fi
-else
-    echo "  FAIL: Package info returned HTTP $INFO_CODE"
-    exit 1
-fi
+# ---- Test 2: Signed protobuf registry and native Hex verification ----
+echo "==> [2/6] Verifying signed registry resources..."
+curl -fsS "$HEX_URL/public_key" -o "$WORK_DIR/registry-key.pem"
+for resource in "packages/$PKG_NAME" names versions; do
+    file="$WORK_DIR/$(basename "$resource").gz"
+    curl -fsS "$HEX_URL/$resource" -o "$file"
+    python3 "$(dirname "$0")/verify-hex-resource.py" "$file" "$WORK_DIR/registry-key.pem" "$PKG_NAME" "$TEST_VERSION" "$HEX_REPO_KEY" "$resource"
+done
+command -v mix >/dev/null || { echo "FAIL: native Mix client is required"; exit 1; }
+export MIX_HOME="$WORK_DIR/mix" HEX_HOME="$WORK_DIR/hex"
+mix local.hex 2.5.2 --force
+mix hex.repo add "$HEX_REPO_KEY" "$HEX_URL" --public-key="$WORK_DIR/registry-key.pem"
+mix hex.package fetch "$PKG_NAME" "$TEST_VERSION" --repo="$HEX_REPO_KEY" --output="$WORK_DIR/native.tar"
+cmp "$TARBALL" "$WORK_DIR/native.tar"
+echo "  Native Hex fetched and verified the exact published tarball"
 
 # ---- Test 3: Download tarball ----
 echo "==> [3/6] Downloading tarball..."
@@ -144,45 +143,6 @@ else
     exit 1
 fi
 
-# ---- Test 5: List names endpoint ----
-echo "==> [5/6] Verifying names endpoint..."
-NAMES_CODE=$(curl -s -o "$WORK_DIR/names.json" -w "%{http_code}" \
-  "$HEX_URL/names")
-if [ "$NAMES_CODE" = "200" ]; then
-    if grep -q "$PKG_NAME" "$WORK_DIR/names.json" 2>/dev/null; then
-        echo "  Names endpoint lists $PKG_NAME"
-    else
-        echo "  FAIL: Names endpoint doesn't contain $PKG_NAME"
-        cat "$WORK_DIR/names.json"
-        exit 1
-    fi
-else
-    echo "  FAIL: Names endpoint returned HTTP $NAMES_CODE"
-    exit 1
-fi
-
-# ---- Test 6: List versions endpoint ----
-echo "==> [6/6] Verifying versions endpoint..."
-VERSIONS_CODE=$(curl -s -o "$WORK_DIR/versions.json" -w "%{http_code}" \
-  "$HEX_URL/versions")
-if [ "$VERSIONS_CODE" = "200" ]; then
-    if grep -q "$TEST_VERSION" "$WORK_DIR/versions.json" 2>/dev/null; then
-        echo "  Versions endpoint lists $PKG_NAME@$TEST_VERSION"
-    else
-        echo "  FAIL: Versions endpoint doesn't contain $TEST_VERSION"
-        cat "$WORK_DIR/versions.json"
-        exit 1
-    fi
-else
-    echo "  FAIL: Versions endpoint returned HTTP $VERSIONS_CODE"
-    exit 1
-fi
-
-echo ""
-echo "All Hex native client tests PASSED"
-echo "   Publish (raw tarball)           OK"
-echo "   Package info                    OK"
-echo "   Tarball download                OK"
-echo "   Tarball content verification    OK"
-echo "   Names listing                   OK"
-echo "   Versions listing                OK"
+echo "==> [5/6] Signed names resource verified"
+echo "==> [6/6] Signed versions resource verified"
+echo "PASS: Hex publish, signed registry, native fetch and content round-trip"

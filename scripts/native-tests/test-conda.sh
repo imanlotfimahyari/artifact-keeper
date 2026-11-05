@@ -19,6 +19,23 @@ skip() { echo "  SKIP: $*"; SKIP=$((SKIP + 1)); }
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "$WORK_DIR"' EXIT
 
+# Capture the client's exit status and validate its structured result. Do not
+# pipe conda into grep -q: early pipe closure can fail an otherwise valid search.
+conda_search_fixture() {
+    local result="$WORK_DIR/search.json"
+    if ! conda search --json "$@" e2e-v1-pkg > "$result" 2>&1; then
+        cat "$result"
+        return 1
+    fi
+    python3 - "$result" "$TEST_VERSION" <<'SEARCH'
+import json, sys
+from pathlib import Path
+result = json.loads(Path(sys.argv[1]).read_text())
+assert any(p["name"] == "e2e-v1-pkg" and p["version"] == sys.argv[2]
+           for p in result.get("e2e-v1-pkg", [])), result
+SEARCH
+}
+
 # ---------------------------------------------------------------------------
 # Auth helpers
 # ---------------------------------------------------------------------------
@@ -285,7 +302,7 @@ for k,v in pkgs.items():
 
 # conda search
 log "Running conda search..."
-if conda search "e2e-v1-pkg" --override-channels -c "$BACKEND_URL/conda/$REPO_KEY" 2>&1 | grep -q "$TEST_VERSION"; then
+if conda_search_fixture --override-channels -c "$BACKEND_URL/conda/$REPO_KEY"; then
     pass "2.9: conda search finds package with correct version"
 else
     fail "2.9: conda search did not find package"
@@ -527,7 +544,7 @@ echo "  Section 11: Client Compatibility"
 echo "============================================="
 
 # conda search
-if conda search "e2e-v1-pkg" --override-channels -c "$BACKEND_URL/conda/$REPO_KEY" 2>&1 | grep -q "e2e-v1-pkg"; then
+if conda_search_fixture --override-channels -c "$BACKEND_URL/conda/$REPO_KEY"; then
     pass "11.3: conda search returns correct results"
 else
     fail "11.3: conda search did not find package"
@@ -554,19 +571,12 @@ CONDARC_TEST="$WORK_DIR/.condarc-test"
 cat > "$CONDARC_TEST" << EOF
 channels:
   - $BACKEND_URL/conda/$REPO_KEY
-  - defaults
+default_channels: []
 EOF
-if CONDARC="$CONDARC_TEST" conda search "e2e-v1-pkg" 2>&1 | grep -q "e2e-v1-pkg"; then
+if CONDARC="$CONDARC_TEST" conda_search_fixture; then
     pass "11.5: .condarc channel URL format works"
 else
-    # Some conda versions don't respect CONDARC env var the same way
-    # Try configuring globally
-    conda config --prepend channels "$BACKEND_URL/conda/$REPO_KEY" 2>/dev/null
-    if conda search "e2e-v1-pkg" 2>&1 | grep -q "e2e-v1-pkg"; then
-        pass "11.5: .condarc channel URL format works (global config)"
-    else
-        fail "11.5: .condarc channel URL format failed"
-    fi
+    fail "11.5: .condarc channel URL format failed"
 fi
 
 # mamba (if available)
@@ -739,14 +749,14 @@ if [ -n "$REPO_ID_LOCAL2" ]; then
 
     if [ -n "$VIRT_ID" ]; then
         # Add members: main repo (priority 1) and local2 (priority 2)
-        curl -sf -X POST "$BACKEND_URL/api/v1/repositories/$VIRT_ID/members" \
+        curl -sf -X POST "$BACKEND_URL/api/v1/repositories/$VIRT_KEY/members" \
             -H "Authorization: Bearer $TOKEN" \
             -H 'Content-Type: application/json' \
-            -d "{\"member_repo_id\":\"$REPO_ID\",\"priority\":1}" > /dev/null 2>&1 || true
-        curl -sf -X POST "$BACKEND_URL/api/v1/repositories/$VIRT_ID/members" \
+            -d "{\"member_key\":\"$REPO_KEY\",\"priority\":1}" > /dev/null || { fail "Add first virtual member"; exit 1; }
+        curl -sf -X POST "$BACKEND_URL/api/v1/repositories/$VIRT_KEY/members" \
             -H "Authorization: Bearer $TOKEN" \
             -H 'Content-Type: application/json' \
-            -d "{\"member_repo_id\":\"$REPO_ID_LOCAL2\",\"priority\":2}" > /dev/null 2>&1 || true
+            -d "{\"member_key\":\"$REPO_KEY_LOCAL2\",\"priority\":2}" > /dev/null || { fail "Add second virtual member"; exit 1; }
 
         # 7.1: Fetch virtual repo repodata
         VIRT_RD=$(curl -sf "$BACKEND_URL/conda/$VIRT_KEY/noarch/repodata.json" 2>/dev/null)
