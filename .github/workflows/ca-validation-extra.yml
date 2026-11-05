@@ -1,4 +1,4 @@
-name: PR 5194 all native profiles at 945c542
+name: PR 5194 native harness follow-up at 945c542
 'on':
   push:
     branches:
@@ -19,41 +19,11 @@ jobs:
     timeout-minutes: 28
     strategy:
       fail-fast: false
-      max-parallel: 16
+      max-parallel: 7
       matrix:
         include:
         - mode: merged
-          profile: pypi
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42065906002
-          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
-        - mode: merged
-          profile: npm
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42065906002
-          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
-        - mode: merged
-          profile: cargo
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42065906002
-          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
-        - mode: merged
           profile: maven
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42065906002
-          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
-        - mode: merged
-          profile: go
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42065906002
-          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
-        - mode: merged
-          profile: rpm
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42065906002
-          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
-        - mode: merged
-          profile: deb
           image_repo: imanlotfimahyari/artifact-keeper
           image_run: 42065906002
           product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
@@ -63,22 +33,7 @@ jobs:
           image_run: 42065906002
           product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
         - mode: merged
-          profile: helm
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42065906002
-          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
-        - mode: merged
-          profile: conda
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42065906002
-          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
-        - mode: merged
           profile: docker
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42065906002
-          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
-        - mode: merged
-          profile: protobuf
           image_repo: imanlotfimahyari/artifact-keeper
           image_run: 42065906002
           product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
@@ -88,22 +43,7 @@ jobs:
           image_run: 42065906002
           product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
         - mode: merged
-          profile: hex
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42065906002
-          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
-        - mode: merged
-          profile: pacman
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42065906002
-          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
-        - mode: merged
           profile: pub
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42065906002
-          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
-        - mode: merged
-          profile: proxy-virtual
           image_repo: imanlotfimahyari/artifact-keeper
           image_run: 42065906002
           product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
@@ -119,41 +59,6 @@ jobs:
           product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
         - mode: merged
           profile: health-probes
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42065906002
-          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
-        - mode: merged
-          profile: tag-replication
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42065906002
-          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
-        - mode: merged
-          profile: curation
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42065906002
-          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
-        - mode: merged
-          profile: docker-proxy
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42065906002
-          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
-        - mode: merged
-          profile: storage-gc
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42065906002
-          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
-        - mode: merged
-          profile: cache-correctness
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42065906002
-          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
-        - mode: merged
-          profile: terraform-mirror
-          image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42065906002
-          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
-        - mode: merged
-          profile: terraform-modules
           image_repo: imanlotfimahyari/artifact-keeper
           image_run: 42065906002
           product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
@@ -452,7 +357,7 @@ jobs:
         for name,v in s.items():
          if name.endswith('-test'):
           env=v.setdefault('environment',{})
-          for k in ('ADMIN_PASS','ADMIN_PASSWORD','AK_TEST_ADMIN_PASSWORD'):env[k]=os.environ[k]
+          for k in ('ADMIN_PASS','ADMIN_PASSWORD','AK_TEST_ADMIN_PASSWORD','REGISTRY_PASS'):env[k]=os.environ[k]
           for k in ('REGISTRY_URL','API_URL','BACKEND_URL'):
            if k in env:env[k]='http://backend.test:8080'
         s['hex-test']['environment']['HEX_REPO_KEY']='ci-hex'
@@ -474,9 +379,11 @@ jobs:
          v.setdefault('volumes',[]).append({'type':'bind','source':str(Path('.pki').resolve()),'target':'/fixture','read_only':True})
          v.setdefault('depends_on',{})['tls-fixture']={'condition':'service_started'}
         if os.environ['PROFILE']=='docker':
-         v=s['docker-test'];v.pop('networks',None);v['network_mode']='host';v['environment']['REGISTRY_URL']='http://localhost:18080'
+         v=s['docker-test'];v.pop('networks',None);v['network_mode']='host';v['environment']['REGISTRY_URL']='localhost:18080'
+        s['maven-test']['environment']['REGISTRY_URL']='http://backend.test:8080/maven/test-maven'
         if os.environ['PROFILE']=='tag-replication':
          s['tag-replication-test']['command']=['bash','-c','apt-get update -qq && apt-get install -y -qq curl jq >/dev/null && bash /scripts/test-tag-replication.sh']
+        if os.environ['PROFILE']=='health-probes':b['environment']['EXPOSE_DETAILED_HEALTH']='true'
         Path('validation-compose.json').write_text(json.dumps(c))
         CONFIG
         python3 configure.py
@@ -589,16 +496,59 @@ jobs:
           python3 - <<'HOSTPATCH'
         from pathlib import Path
         p=Path('scripts/native-tests/test-incus.sh')
-        p.write_text(p.read_text().replace('\\"hosted\\"','\\"local\\"'))
+        t=p.read_text().replace(r'\"hosted\"',r'\"local\"')
+        wait='''
+        wait_upload() {
+            local body="$1" session status
+            session=$(printf '%s' "$body" | jq -er '.session_id')
+            for _ in $(seq 1 60); do
+                status=$(curl -fsS -u "${ADMIN_USER}:${ADMIN_PASS}" "${API_URL}/incus/${REPO_KEY}/uploads/$session" | jq -er '.status')
+                [ "$status" != failed ] || { echo 'FAIL: asynchronous Incus upload failed'; return 1; }
+                [ "$status" != completed ] || return 0
+                sleep 1
+            done
+            echo 'FAIL: Incus upload timed out'; return 1
+        }
+        '''
+        t=t.replace('WORK_DIR="$(mktemp -d)"',wait+'\nWORK_DIR="$(mktemp -d)"')
+        t=t.replace('if [ "$HTTP_CODE" != "201" ]; then','if [ "$HTTP_CODE" != "201" ] && [ "$HTTP_CODE" != "202" ]; then')
+        for body,marker in [('UPLOAD_RESPONSE','UNIFIED_SHA256='),('META_RESPONSE','echo "  Uploaded: debian-bookworm/20240301/metadata.tar.gz"'),('ROOTFS_RESPONSE','ROOTFS_SHA256=')]:
+         pos=t.index(marker)
+         line='[ "$HTTP_CODE" != "202" ] || wait_upload "$(echo "$'+body+'" | sed \'$d\')"\n'
+         t=t[:pos]+line+t[pos:]
+        t=t.replace('incus.tar.xz"].sha256 // empty','incus.tar.gz"].sha256 // empty')
+        t=t.replace('if [ -n "$CATALOG_SHA256" ] &&','if [ -z "$CATALOG_SHA256" ] ||')
+        t=t.replace('if [ "$ORIG_SIZE" != "$DL_SIZE" ]; then','if ! cmp -s "$ROOTFS_FILE" "$DOWNLOAD_FILE" || [ "$ORIG_SIZE" != "$DL_SIZE" ]; then')
+        p.write_text(t)
         for n in ('pub','pub-proxy','pub-virtual'):
          p=Path('scripts/native-tests/test-'+n+'.sh');t=p.read_text()
          t=t.replace('HOST_IP=$(ipconfig getifaddr en0 2>/dev/null || echo "host.docker.internal")','HOST_IP=host.docker.internal')
          t=t.replace('subjectAltName=IP:$HOST_IP,DNS:localhost','subjectAltName=DNS:host.docker.internal,DNS:localhost,IP:127.0.0.1')
          t=t.replace('proxy_pass http://host.docker.internal:8080;','proxy_pass http://host.docker.internal:18080;')
+         t=t.replace('sh -c "','sh -ec "')
+         if n=='pub':
+          t+='\n[ "${DART_EXIT:-1}" = 0 ] && [ "${DART_DL_EXIT:-1}" = 0 ] || exit 1\n'
          p.write_text(t)
+        p=Path('scripts/native-tests/test-health-probes.sh');t=p.read_text()
+        t=t.replace('if [ "$SETUP_STATUS" = "healthy" ]; then','if [ "$SETUP_STATUS" = "complete" ]; then')
+        t=t.replace('/readyz setup_complete check is healthy','/readyz setup_complete check is complete')
+        a=t.index('if grep -q "ak_db_pool_connections"');b=t.index('\n# ---- Test 17:',a)
+        t=t[:a]+'''for _ in $(seq 1 66); do
+            curl -fsS -H "Authorization: Bearer $TOKEN" "$REGISTRY_URL/api/v1/admin/metrics" > /tmp/metrics.txt
+            if grep -q "ak_db_pool_connections" /tmp/metrics.txt; then break; fi
+            sleep 5
+        done
+        if grep -q "ak_db_pool_connections" /tmp/metrics.txt; then
+            pass "ak_db_pool_connections gauges present in metrics"
+        else
+            fail "ak_db_pool_connections absent after periodic update bound"
+        fi
+        '''+t[b:]
+        p.write_text(t)
         HOSTPATCH
+          if [[ "$PROFILE" = pub* ]]; then docker pull nginx:alpine >> reports/start.log 2>&1; fi
           if [ "$PROFILE" = deb-flat-proxy ]; then
-            sudo -E timeout 1200 bash "scripts/native-tests/test-$PROFILE.sh" > reports/test.log 2>&1
+            docker run --rm --network host -e REGISTRY_URL -e ADMIN_USER -e ADMIN_PASS -v "$PWD/scripts:/scripts:ro" debian:trixie-slim bash -ec 'apt-get update -qq && apt-get install -y -qq curl ca-certificates gnupg >/dev/null && bash /scripts/native-tests/test-deb-flat-proxy.sh' > reports/test.log 2>&1
           else
             timeout 1200 bash "scripts/native-tests/test-$PROFILE.sh" > reports/test.log 2>&1
           fi
@@ -654,7 +604,7 @@ jobs:
       if: always()
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
-        name: native-945c542-${{ matrix.profile }}
+        name: native-followup-945c542-${{ matrix.profile }}
         path: reports
         retention-days: 7
     - name: Clean isolated stack
