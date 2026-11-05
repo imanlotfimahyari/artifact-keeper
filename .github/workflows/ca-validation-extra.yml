@@ -1,4 +1,4 @@
-name: PR 5194 corrected curation comparison
+name: PR 5194 all native profiles at 945c542
 'on':
   push:
     branches:
@@ -14,24 +14,149 @@ concurrency:
   cancel-in-progress: false
 jobs:
   native:
-    name: ${{ matrix.mode }} / ${{ matrix.profile }}
+    name: 945c542 / ${{ matrix.profile }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 28
     strategy:
       fail-fast: false
-      max-parallel: 2
+      max-parallel: 16
       matrix:
         include:
+        - mode: merged
+          profile: pypi
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42065906002
+          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
+        - mode: merged
+          profile: npm
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42065906002
+          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
+        - mode: merged
+          profile: cargo
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42065906002
+          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
+        - mode: merged
+          profile: maven
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42065906002
+          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
+        - mode: merged
+          profile: go
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42065906002
+          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
+        - mode: merged
+          profile: rpm
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42065906002
+          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
+        - mode: merged
+          profile: deb
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42065906002
+          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
+        - mode: merged
+          profile: deb-flat-proxy
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42065906002
+          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
+        - mode: merged
+          profile: helm
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42065906002
+          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
+        - mode: merged
+          profile: conda
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42065906002
+          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
+        - mode: merged
+          profile: docker
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42065906002
+          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
+        - mode: merged
+          profile: protobuf
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42065906002
+          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
+        - mode: merged
+          profile: incus
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42065906002
+          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
+        - mode: merged
+          profile: hex
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42065906002
+          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
+        - mode: merged
+          profile: pacman
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42065906002
+          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
+        - mode: merged
+          profile: pub
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42065906002
+          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
+        - mode: merged
+          profile: proxy-virtual
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42065906002
+          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
+        - mode: merged
+          profile: pub-proxy
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42065906002
+          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
+        - mode: merged
+          profile: pub-virtual
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42065906002
+          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
+        - mode: merged
+          profile: health-probes
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42065906002
+          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
+        - mode: merged
+          profile: tag-replication
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42065906002
+          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
         - mode: merged
           profile: curation
           image_repo: imanlotfimahyari/artifact-keeper
           image_run: 42065906002
           product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
-        - mode: base
-          profile: curation
+        - mode: merged
+          profile: docker-proxy
           image_repo: imanlotfimahyari/artifact-keeper
-          image_run: 42066236236
-          product_sha: 0bffa44cb2e7a4b85c4e54780628e8642e34ed14
+          image_run: 42065906002
+          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
+        - mode: merged
+          profile: storage-gc
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42065906002
+          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
+        - mode: merged
+          profile: cache-correctness
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42065906002
+          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
+        - mode: merged
+          profile: terraform-mirror
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42065906002
+          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
+        - mode: merged
+          profile: terraform-modules
+          image_repo: imanlotfimahyari/artifact-keeper
+          image_run: 42065906002
+          product_sha: 945c542c574b68e6934aad4565f1f8575465ad0f
     env:
       PROFILE: ${{ matrix.profile }}
       MODE: ${{ matrix.mode }}
@@ -42,282 +167,248 @@ jobs:
         ref: 945c542c574b68e6934aad4565f1f8575465ad0f
         persist-credentials: false
     - name: Apply isolated native test repairs
-      run: "cat > /tmp/native-setups.patch <<'PATCH'\ndiff --git a/scripts/native-tests/prepare-curation-fixture.sh\
-        \ b/scripts/native-tests/prepare-curation-fixture.sh\nnew file mode 100644\nindex 00000000..586ca1b3\n---\
-        \ /dev/null\n+++ b/scripts/native-tests/prepare-curation-fixture.sh\n@@ -0,0 +1,26 @@\n+#!/usr/bin/env bash\n\
-        +# Sign synthetic RPM metadata with the trusted primary key. The backend's\n+# detached-signature verifier\
-        \ currently checks that key, not its signing subkeys.\n+set -euo pipefail\n+fixture_dir=\"${1:-scripts/native-tests/fixtures/curation/rpm/repodata}\"\
-        \n+fixture_key=\"${2:-.pki/gpg-signing.key}\"\n+export GNUPGHOME=\"$(mktemp -d)\"\n+chmod 700 \"$GNUPGHOME\"\
-        \n+trap 'gpgconf --kill gpg-agent 2>/dev/null || true; rm -rf \"$GNUPGHOME\"' EXIT\n+gpg --batch --import\
-        \ \"$fixture_key\"\n+fixture_fingerprint=$(gpg --batch --with-colons --list-keys | awk -F: '$1 == \"fpr\"\
-        \ {print $10; exit}')\n+[ -n \"$fixture_fingerprint\" ]\n+python3 - \"$fixture_dir\" <<'PY'\n+from pathlib\
-        \ import Path\n+import hashlib\n+import sys\n+path = Path(sys.argv[1])\n+body = (path / 'primary.xml.gz').read_bytes()\n\
-        +(path / 'repomd.xml').write_text(\n+    '<repomd xmlns=\"http://linux.duke.edu/metadata/repo\"><data type=\"\
-        primary\">'\n+    '<location href=\"repodata/primary.xml.gz\"/><checksum type=\"sha256\">'\n+    + hashlib.sha256(body).hexdigest()\
+      run: "cat > /tmp/native-setups.patch <<'PATCH'\ndiff --git a/scripts/native-tests/prepare-curation-fixture.sh b/scripts/native-tests/prepare-curation-fixture.sh\n\
+        new file mode 100644\nindex 00000000..586ca1b3\n--- /dev/null\n+++ b/scripts/native-tests/prepare-curation-fixture.sh\n\
+        @@ -0,0 +1,26 @@\n+#!/usr/bin/env bash\n+# Sign synthetic RPM metadata with the trusted primary key. The backend's\n\
+        +# detached-signature verifier currently checks that key, not its signing subkeys.\n+set -euo pipefail\n+fixture_dir=\"\
+        ${1:-scripts/native-tests/fixtures/curation/rpm/repodata}\"\n+fixture_key=\"${2:-.pki/gpg-signing.key}\"\n+export\
+        \ GNUPGHOME=\"$(mktemp -d)\"\n+chmod 700 \"$GNUPGHOME\"\n+trap 'gpgconf --kill gpg-agent 2>/dev/null || true; rm -rf\
+        \ \"$GNUPGHOME\"' EXIT\n+gpg --batch --import \"$fixture_key\"\n+fixture_fingerprint=$(gpg --batch --with-colons --list-keys\
+        \ | awk -F: '$1 == \"fpr\" {print $10; exit}')\n+[ -n \"$fixture_fingerprint\" ]\n+python3 - \"$fixture_dir\" <<'PY'\n\
+        +from pathlib import Path\n+import hashlib\n+import sys\n+path = Path(sys.argv[1])\n+body = (path / 'primary.xml.gz').read_bytes()\n\
+        +(path / 'repomd.xml').write_text(\n+    '<repomd xmlns=\"http://linux.duke.edu/metadata/repo\"><data type=\"primary\"\
+        >'\n+    '<location href=\"repodata/primary.xml.gz\"/><checksum type=\"sha256\">'\n+    + hashlib.sha256(body).hexdigest()\
         \ + '</checksum><size>' + str(len(body))\n+    + '</size></data></repomd>')\n+PY\n+gpg --batch --yes --local-user\
-        \ \"$fixture_fingerprint!\" --armor --detach-sign \"$fixture_dir/repomd.xml\"\n+gpg --batch --verify \"\
-        $fixture_dir/repomd.xml.asc\" \"$fixture_dir/repomd.xml\"\ndiff --git a/scripts/native-tests/test-conda.sh\
-        \ b/scripts/native-tests/test-conda.sh\nindex 7c4ab547..30c5e4c9 100755\n--- a/scripts/native-tests/test-conda.sh\n\
-        +++ b/scripts/native-tests/test-conda.sh\n@@ -19,6 +19,23 @@ skip() { echo \"  SKIP: $*\"; SKIP=$((SKIP\
-        \ + 1)); }\n WORK_DIR=\"$(mktemp -d)\"\n trap 'rm -rf \"$WORK_DIR\"' EXIT\n \n+# Capture the client's exit\
-        \ status and validate its structured result. Do not\n+# pipe conda into grep -q: early pipe closure can\
-        \ fail an otherwise valid search.\n+conda_search_fixture() {\n+    local result=\"$WORK_DIR/search.json\"\
-        \n+    if ! conda search --json \"$@\" e2e-v1-pkg > \"$result\" 2>&1; then\n+        cat \"$result\"\n+\
-        \        return 1\n+    fi\n+    python3 - \"$result\" \"$TEST_VERSION\" <<'SEARCH'\n+import json, sys\n\
-        +from pathlib import Path\n+result = json.loads(Path(sys.argv[1]).read_text())\n+assert any(p[\"name\"]\
-        \ == \"e2e-v1-pkg\" and p[\"version\"] == sys.argv[2]\n+           for p in result.get(\"e2e-v1-pkg\", [])),\
-        \ result\n+SEARCH\n+}\n+\n # ---------------------------------------------------------------------------\n\
-        \ # Auth helpers\n # ---------------------------------------------------------------------------\n@@ -285,7\
-        \ +302,7 @@ for k,v in pkgs.items():\n \n # conda search\n log \"Running conda search...\"\n-if conda search\
-        \ \"e2e-v1-pkg\" --override-channels -c \"$BACKEND_URL/conda/$REPO_KEY\" 2>&1 | grep -q \"$TEST_VERSION\"\
-        ; then\n+if conda_search_fixture --override-channels -c \"$BACKEND_URL/conda/$REPO_KEY\"; then\n     pass\
-        \ \"2.9: conda search finds package with correct version\"\n else\n     fail \"2.9: conda search did not\
-        \ find package\"\n@@ -527,7 +544,7 @@ echo \"  Section 11: Client Compatibility\"\n echo \"=============================================\"\
-        \n \n # conda search\n-if conda search \"e2e-v1-pkg\" --override-channels -c \"$BACKEND_URL/conda/$REPO_KEY\"\
-        \ 2>&1 | grep -q \"e2e-v1-pkg\"; then\n+if conda_search_fixture --override-channels -c \"$BACKEND_URL/conda/$REPO_KEY\"\
-        ; then\n     pass \"11.3: conda search returns correct results\"\n else\n     fail \"11.3: conda search\
-        \ did not find package\"\n@@ -550,23 +567,16 @@ fi\n \n # .condarc URL format\n log \"Testing .condarc channel\
-        \ URL format...\"\n-CONDARC_TEST=\"$WORK_DIR/.condarc-test\"\n+CONDARC_TEST=\"$WORK_DIR/.condarc\"\n cat\
-        \ > \"$CONDARC_TEST\" << EOF\n channels:\n   - $BACKEND_URL/conda/$REPO_KEY\n-  - defaults\n+default_channels:\
-        \ []\n EOF\n-if CONDARC=\"$CONDARC_TEST\" conda search \"e2e-v1-pkg\" 2>&1 | grep -q \"e2e-v1-pkg\"; then\n\
-        +if CONDARC=\"$CONDARC_TEST\" conda_search_fixture; then\n     pass \"11.5: .condarc channel URL format\
-        \ works\"\n else\n-    # Some conda versions don't respect CONDARC env var the same way\n-    # Try configuring\
-        \ globally\n-    conda config --prepend channels \"$BACKEND_URL/conda/$REPO_KEY\" 2>/dev/null\n-    if conda\
-        \ search \"e2e-v1-pkg\" 2>&1 | grep -q \"e2e-v1-pkg\"; then\n-        pass \"11.5: .condarc channel URL\
-        \ format works (global config)\"\n-    else\n-        fail \"11.5: .condarc channel URL format failed\"\n\
-        -    fi\n+    fail \"11.5: .condarc channel URL format failed\"\n fi\n \n # mamba (if available)\n@@ -739,14\
-        \ +749,14 @@ if [ -n \"$REPO_ID_LOCAL2\" ]; then\n \n     if [ -n \"$VIRT_ID\" ]; then\n         # Add members:\
-        \ main repo (priority 1) and local2 (priority 2)\n-        curl -sf -X POST \"$BACKEND_URL/api/v1/repositories/$VIRT_ID/members\"\
-        \ \\\n+        curl -sf -X POST \"$BACKEND_URL/api/v1/repositories/$VIRT_KEY/members\" \\\n            \
-        \ -H \"Authorization: Bearer $TOKEN\" \\\n             -H 'Content-Type: application/json' \\\n-       \
-        \     -d \"{\\\"member_repo_id\\\":\\\"$REPO_ID\\\",\\\"priority\\\":1}\" > /dev/null 2>&1 || true\n-  \
-        \      curl -sf -X POST \"$BACKEND_URL/api/v1/repositories/$VIRT_ID/members\" \\\n+            -d \"{\\\"\
-        member_key\\\":\\\"$REPO_KEY\\\",\\\"priority\\\":1}\" > /dev/null || { fail \"Add first virtual member\"\
-        ; exit 1; }\n+        curl -sf -X POST \"$BACKEND_URL/api/v1/repositories/$VIRT_KEY/members\" \\\n     \
-        \        -H \"Authorization: Bearer $TOKEN\" \\\n             -H 'Content-Type: application/json' \\\n-\
-        \            -d \"{\\\"member_repo_id\\\":\\\"$REPO_ID_LOCAL2\\\",\\\"priority\\\":2}\" > /dev/null 2>&1\
-        \ || true\n+            -d \"{\\\"member_key\\\":\\\"$REPO_KEY_LOCAL2\\\",\\\"priority\\\":2}\" > /dev/null\
-        \ || { fail \"Add second virtual member\"; exit 1; }\n \n         # 7.1: Fetch virtual repo repodata\n \
-        \        VIRT_RD=$(curl -sf \"$BACKEND_URL/conda/$VIRT_KEY/noarch/repodata.json\" 2>/dev/null)\ndiff --git\
-        \ a/scripts/native-tests/test-curation.sh b/scripts/native-tests/test-curation.sh\nindex 91cd40c8..0eea9e20\
-        \ 100755\n--- a/scripts/native-tests/test-curation.sh\n+++ b/scripts/native-tests/test-curation.sh\n@@ -12,7\
-        \ +12,7 @@\n #\n # Requires: curl, jq, psql (postgresql-client), bash\n # Environment: REGISTRY_URL, ADMIN_USER,\
+        \ \"$fixture_fingerprint!\" --armor --detach-sign \"$fixture_dir/repomd.xml\"\n+gpg --batch --verify \"$fixture_dir/repomd.xml.asc\"\
+        \ \"$fixture_dir/repomd.xml\"\ndiff --git a/scripts/native-tests/test-conda.sh b/scripts/native-tests/test-conda.sh\n\
+        index 7c4ab547..30c5e4c9 100755\n--- a/scripts/native-tests/test-conda.sh\n+++ b/scripts/native-tests/test-conda.sh\n\
+        @@ -19,6 +19,23 @@ skip() { echo \"  SKIP: $*\"; SKIP=$((SKIP + 1)); }\n WORK_DIR=\"$(mktemp -d)\"\n trap 'rm -rf\
+        \ \"$WORK_DIR\"' EXIT\n \n+# Capture the client's exit status and validate its structured result. Do not\n+# pipe\
+        \ conda into grep -q: early pipe closure can fail an otherwise valid search.\n+conda_search_fixture() {\n+    local\
+        \ result=\"$WORK_DIR/search.json\"\n+    if ! conda search --json \"$@\" e2e-v1-pkg > \"$result\" 2>&1; then\n+  \
+        \      cat \"$result\"\n+        return 1\n+    fi\n+    python3 - \"$result\" \"$TEST_VERSION\" <<'SEARCH'\n+import\
+        \ json, sys\n+from pathlib import Path\n+result = json.loads(Path(sys.argv[1]).read_text())\n+assert any(p[\"name\"\
+        ] == \"e2e-v1-pkg\" and p[\"version\"] == sys.argv[2]\n+           for p in result.get(\"e2e-v1-pkg\", [])), result\n\
+        +SEARCH\n+}\n+\n # ---------------------------------------------------------------------------\n # Auth helpers\n\
+        \ # ---------------------------------------------------------------------------\n@@ -285,7 +302,7 @@ for k,v in pkgs.items():\n\
+        \ \n # conda search\n log \"Running conda search...\"\n-if conda search \"e2e-v1-pkg\" --override-channels -c \"$BACKEND_URL/conda/$REPO_KEY\"\
+        \ 2>&1 | grep -q \"$TEST_VERSION\"; then\n+if conda_search_fixture --override-channels -c \"$BACKEND_URL/conda/$REPO_KEY\"\
+        ; then\n     pass \"2.9: conda search finds package with correct version\"\n else\n     fail \"2.9: conda search did\
+        \ not find package\"\n@@ -527,7 +544,7 @@ echo \"  Section 11: Client Compatibility\"\n echo \"=============================================\"\
+        \n \n # conda search\n-if conda search \"e2e-v1-pkg\" --override-channels -c \"$BACKEND_URL/conda/$REPO_KEY\" 2>&1\
+        \ | grep -q \"e2e-v1-pkg\"; then\n+if conda_search_fixture --override-channels -c \"$BACKEND_URL/conda/$REPO_KEY\"\
+        ; then\n     pass \"11.3: conda search returns correct results\"\n else\n     fail \"11.3: conda search did not find\
+        \ package\"\n@@ -550,23 +567,16 @@ fi\n \n # .condarc URL format\n log \"Testing .condarc channel URL format...\"\n\
+        -CONDARC_TEST=\"$WORK_DIR/.condarc-test\"\n+CONDARC_TEST=\"$WORK_DIR/.condarc\"\n cat > \"$CONDARC_TEST\" << EOF\n\
+        \ channels:\n   - $BACKEND_URL/conda/$REPO_KEY\n-  - defaults\n+default_channels: []\n EOF\n-if CONDARC=\"$CONDARC_TEST\"\
+        \ conda search \"e2e-v1-pkg\" 2>&1 | grep -q \"e2e-v1-pkg\"; then\n+if CONDARC=\"$CONDARC_TEST\" conda_search_fixture;\
+        \ then\n     pass \"11.5: .condarc channel URL format works\"\n else\n-    # Some conda versions don't respect CONDARC\
+        \ env var the same way\n-    # Try configuring globally\n-    conda config --prepend channels \"$BACKEND_URL/conda/$REPO_KEY\"\
+        \ 2>/dev/null\n-    if conda search \"e2e-v1-pkg\" 2>&1 | grep -q \"e2e-v1-pkg\"; then\n-        pass \"11.5: .condarc\
+        \ channel URL format works (global config)\"\n-    else\n-        fail \"11.5: .condarc channel URL format failed\"\
+        \n-    fi\n+    fail \"11.5: .condarc channel URL format failed\"\n fi\n \n # mamba (if available)\n@@ -739,14 +749,14\
+        \ @@ if [ -n \"$REPO_ID_LOCAL2\" ]; then\n \n     if [ -n \"$VIRT_ID\" ]; then\n         # Add members: main repo\
+        \ (priority 1) and local2 (priority 2)\n-        curl -sf -X POST \"$BACKEND_URL/api/v1/repositories/$VIRT_ID/members\"\
+        \ \\\n+        curl -sf -X POST \"$BACKEND_URL/api/v1/repositories/$VIRT_KEY/members\" \\\n             -H \"Authorization:\
+        \ Bearer $TOKEN\" \\\n             -H 'Content-Type: application/json' \\\n-            -d \"{\\\"member_repo_id\\\
+        \":\\\"$REPO_ID\\\",\\\"priority\\\":1}\" > /dev/null 2>&1 || true\n-        curl -sf -X POST \"$BACKEND_URL/api/v1/repositories/$VIRT_ID/members\"\
+        \ \\\n+            -d \"{\\\"member_key\\\":\\\"$REPO_KEY\\\",\\\"priority\\\":1}\" > /dev/null || { fail \"Add first\
+        \ virtual member\"; exit 1; }\n+        curl -sf -X POST \"$BACKEND_URL/api/v1/repositories/$VIRT_KEY/members\" \\\
+        \n             -H \"Authorization: Bearer $TOKEN\" \\\n             -H 'Content-Type: application/json' \\\n-    \
+        \        -d \"{\\\"member_repo_id\\\":\\\"$REPO_ID_LOCAL2\\\",\\\"priority\\\":2}\" > /dev/null 2>&1 || true\n+  \
+        \          -d \"{\\\"member_key\\\":\\\"$REPO_KEY_LOCAL2\\\",\\\"priority\\\":2}\" > /dev/null || { fail \"Add second\
+        \ virtual member\"; exit 1; }\n \n         # 7.1: Fetch virtual repo repodata\n         VIRT_RD=$(curl -sf \"$BACKEND_URL/conda/$VIRT_KEY/noarch/repodata.json\"\
+        \ 2>/dev/null)\ndiff --git a/scripts/native-tests/test-curation.sh b/scripts/native-tests/test-curation.sh\nindex\
+        \ 91cd40c8..0eea9e20 100755\n--- a/scripts/native-tests/test-curation.sh\n+++ b/scripts/native-tests/test-curation.sh\n\
+        @@ -12,7 +12,7 @@\n #\n # Requires: curl, jq, psql (postgresql-client), bash\n # Environment: REGISTRY_URL, ADMIN_USER,\
         \ ADMIN_PASS, MOCK_UPSTREAM_URL, PG* vars\n-set -uo pipefail\n+set -euo pipefail\n \n REGISTRY_URL=\"${REGISTRY_URL:-http://localhost:8080}\"\
-        \n ADMIN_USER=\"${ADMIN_USER:-admin}\"\n@@ -59,6 +59,13 @@ echo \"Registry: $REGISTRY_URL\"\n echo \"Mock\
-        \ upstream: $MOCK_UPSTREAM_URL\"\n echo \"\"\n \n+# Re-evaluation processes pending rows only. Reset this\
-        \ disposable fixture's\n+# catalog before testing a changed rule, as the service's regression tests do.\n\
-        +reset_fixture_packages() {\n+    local fixture_repo_id=\"$1\"\n+    psql -v ON_ERROR_STOP=1 -c \"UPDATE\
-        \ curation_packages SET status = 'pending' WHERE staging_repo_id = '$fixture_repo_id';\" >/dev/null || exit\
-        \ 1\n+}\n+\n # ============================================================================\n # Auth\n #\
-        \ ============================================================================\n@@ -132,6 +139,16 @@ psql\
-        \ -c \"UPDATE repositories SET\n \n pass \"Enable curation on RPM staging repo\"\n \n+# Fail closed without\
-        \ a trusted upstream key, then enable the signed fixture.\n+# The fixture workflow signs repomd.xml and\
-        \ pins primary.xml.gz's digest.\n+curl -fsS -X POST \"$CURATION_URL/repos/curation-rpm-staging/sync\" -H\
-        \ \"$AUTH\" | jq -e '.succeeded == false' >/dev/null || { fail \"Keyless sync reported success\"; exit 1;\
-        \ }\n+KEYLESS_COUNT=$(curl -fsS \"$CURATION_URL/packages?staging_repo_id=$STAGING_RPM_ID&limit=50\" -H \"\
-        $AUTH\" | jq 'length')\n+[ \"$KEYLESS_COUNT\" = \"0\" ] || { fail \"Keyless RPM sync ingested packages\"\
-        ; exit 1; }\n+pass \"Keyless RPM sync refuses untrusted metadata\"\n+TRUST_PAYLOAD=$(jq -n --rawfile key\
-        \ \"${CURATION_GPG_KEY:?CURATION_GPG_KEY must name the fixture public key}\" '{trusted_gpg_key:$key}')\n\
-        +curl -fsS -X PATCH \"$API_URL/repositories/curation-rpm-remote\" -H \"$AUTH\" -H 'Content-Type: application/json'\
-        \ -d \"$TRUST_PAYLOAD\" >/dev/null\n+curl -fsS -X POST \"$CURATION_URL/repos/curation-rpm-staging/sync\"\
-        \ -H \"$AUTH\" | jq -e '.succeeded == true' >/dev/null || { fail \"Signed sync failed\"; exit 1; }\n+\n\
-        \ # Poll the packages endpoint until 6 packages appear (max 90 seconds)\n echo \"  Waiting for curation\
-        \ sync (up to 90s)...\"\n SYNC_OK=false\n@@ -178,6 +195,13 @@ else\n     fail \"Stats endpoint: expected\
-        \ 6 review, got $STATS_REVIEW\"\n fi\n \n+# Existing decisions are preserved by a pending-only re-evaluation.\n\
-        +UNCHANGED_COUNT=$(curl -fsS -X POST \"$CURATION_URL/packages/re-evaluate\" \\\n+    -H \"$AUTH\" -H 'Content-Type:\
-        \ application/json' \\\n+    -d \"{\\\"staging_repo_id\\\":\\\"$STAGING_RPM_ID\\\",\\\"default_action\\\"\
-        :\\\"review\\\"}\")\n+[ \"$UNCHANGED_COUNT\" = \"0\" ] || { fail \"Re-evaluation changed decided rows\"\
-        ; exit 1; }\n+pass \"Pending-only re-evaluation preserves existing decisions\"\n+\n # ============================================================================\n\
-        \ # Phase 4: Create block rule and re-evaluate\n # ============================================================================\n\
-        @@ -197,10 +221,11 @@ else\n fi\n \n # Re-evaluate all packages with default_action=review\n-EVAL_COUNT=$(curl\
-        \ -sf -X POST \"$CURATION_URL/packages/re-evaluate\" \\\n+EVAL_COUNT=$(reset_fixture_packages \"$STAGING_RPM_ID\"\
+        \n ADMIN_USER=\"${ADMIN_USER:-admin}\"\n@@ -59,6 +59,13 @@ echo \"Registry: $REGISTRY_URL\"\n echo \"Mock upstream:\
+        \ $MOCK_UPSTREAM_URL\"\n echo \"\"\n \n+# Re-evaluation processes pending rows only. Reset this disposable fixture's\n\
+        +# catalog before testing a changed rule, as the service's regression tests do.\n+reset_fixture_packages() {\n+  \
+        \  local fixture_repo_id=\"$1\"\n+    psql -v ON_ERROR_STOP=1 -c \"UPDATE curation_packages SET status = 'pending'\
+        \ WHERE staging_repo_id = '$fixture_repo_id';\" >/dev/null || exit 1\n+}\n+\n # ============================================================================\n\
+        \ # Auth\n # ============================================================================\n@@ -132,6 +139,16 @@ psql\
+        \ -c \"UPDATE repositories SET\n \n pass \"Enable curation on RPM staging repo\"\n \n+# Fail closed without a trusted\
+        \ upstream key, then enable the signed fixture.\n+# The fixture workflow signs repomd.xml and pins primary.xml.gz's\
+        \ digest.\n+curl -fsS -X POST \"$CURATION_URL/repos/curation-rpm-staging/sync\" -H \"$AUTH\" | jq -e '.succeeded ==\
+        \ false' >/dev/null || { fail \"Keyless sync reported success\"; exit 1; }\n+KEYLESS_COUNT=$(curl -fsS \"$CURATION_URL/packages?staging_repo_id=$STAGING_RPM_ID&limit=50\"\
+        \ -H \"$AUTH\" | jq 'length')\n+[ \"$KEYLESS_COUNT\" = \"0\" ] || { fail \"Keyless RPM sync ingested packages\"; exit\
+        \ 1; }\n+pass \"Keyless RPM sync refuses untrusted metadata\"\n+TRUST_PAYLOAD=$(jq -n --rawfile key \"${CURATION_GPG_KEY:?CURATION_GPG_KEY\
+        \ must name the fixture public key}\" '{trusted_gpg_key:$key}')\n+curl -fsS -X PATCH \"$API_URL/repositories/curation-rpm-remote\"\
+        \ -H \"$AUTH\" -H 'Content-Type: application/json' -d \"$TRUST_PAYLOAD\" >/dev/null\n+curl -fsS -X POST \"$CURATION_URL/repos/curation-rpm-staging/sync\"\
+        \ -H \"$AUTH\" | jq -e '.succeeded == true' >/dev/null || { fail \"Signed sync failed\"; exit 1; }\n+\n # Poll the\
+        \ packages endpoint until 6 packages appear (max 90 seconds)\n echo \"  Waiting for curation sync (up to 90s)...\"\
+        \n SYNC_OK=false\n@@ -178,6 +195,13 @@ else\n     fail \"Stats endpoint: expected 6 review, got $STATS_REVIEW\"\n\
+        \ fi\n \n+# Existing decisions are preserved by a pending-only re-evaluation.\n+UNCHANGED_COUNT=$(curl -fsS -X POST\
+        \ \"$CURATION_URL/packages/re-evaluate\" \\\n+    -H \"$AUTH\" -H 'Content-Type: application/json' \\\n+    -d \"\
+        {\\\"staging_repo_id\\\":\\\"$STAGING_RPM_ID\\\",\\\"default_action\\\":\\\"review\\\"}\")\n+[ \"$UNCHANGED_COUNT\"\
+        \ = \"0\" ] || { fail \"Re-evaluation changed decided rows\"; exit 1; }\n+pass \"Pending-only re-evaluation preserves\
+        \ existing decisions\"\n+\n # ============================================================================\n # Phase\
+        \ 4: Create block rule and re-evaluate\n # ============================================================================\n\
+        @@ -197,10 +221,11 @@ else\n fi\n \n # Re-evaluate all packages with default_action=review\n-EVAL_COUNT=$(curl -sf\
+        \ -X POST \"$CURATION_URL/packages/re-evaluate\" \\\n+EVAL_COUNT=$(reset_fixture_packages \"$STAGING_RPM_ID\"; curl\
+        \ -sf -X POST \"$CURATION_URL/packages/re-evaluate\" \\\n     -H \"$AUTH\" -H 'Content-Type: application/json' \\\n\
+        \     -d \"{\\\"staging_repo_id\\\":\\\"$STAGING_RPM_ID\\\",\\\"default_action\\\":\\\"review\\\"}\")\n-pass \"Re-evaluated\
+        \ packages (count: $EVAL_COUNT)\"\n+[ \"$EVAL_COUNT\" = \"6\" ] || { fail \"Expected six pending fixture rows to be\
+        \ evaluated, got $EVAL_COUNT\"; exit 1; }\n+pass \"Re-evaluated six pending fixture packages\"\n \n # Verify telnet-server\
+        \ is blocked\n TELNET_STATUS=$(curl -sf \"$CURATION_URL/packages?staging_repo_id=$STAGING_RPM_ID&status=blocked\"\
+        \ \\\n@@ -229,7 +254,7 @@ else\n fi\n \n # Re-evaluate\n-curl -sf -X POST \"$CURATION_URL/packages/re-evaluate\" \\\
+        \n+reset_fixture_packages \"$STAGING_RPM_ID\"; curl -sf -X POST \"$CURATION_URL/packages/re-evaluate\" \\\n     -H\
+        \ \"$AUTH\" -H 'Content-Type: application/json' \\\n     -d \"{\\\"staging_repo_id\\\":\\\"$STAGING_RPM_ID\\\",\\\"\
+        default_action\\\":\\\"review\\\"}\" > /dev/null\n \n@@ -260,7 +285,7 @@ else\n fi\n \n # Re-evaluate\n-curl -sf -X\
+        \ POST \"$CURATION_URL/packages/re-evaluate\" \\\n+reset_fixture_packages \"$STAGING_RPM_ID\"; curl -sf -X POST \"\
+        $CURATION_URL/packages/re-evaluate\" \\\n     -H \"$AUTH\" -H 'Content-Type: application/json' \\\n     -d \"{\\\"\
+        staging_repo_id\\\":\\\"$STAGING_RPM_ID\\\",\\\"default_action\\\":\\\"review\\\"}\" > /dev/null\n \n@@ -292,7 +317,7\
+        \ @@ else\n fi\n \n # Re-evaluate\n-curl -sf -X POST \"$CURATION_URL/packages/re-evaluate\" \\\n+reset_fixture_packages\
+        \ \"$STAGING_RPM_ID\"; curl -sf -X POST \"$CURATION_URL/packages/re-evaluate\" \\\n     -H \"$AUTH\" -H 'Content-Type:\
+        \ application/json' \\\n     -d \"{\\\"staging_repo_id\\\":\\\"$STAGING_RPM_ID\\\",\\\"default_action\\\":\\\"review\\\
+        \"}\" > /dev/null\n \n@@ -438,7 +463,7 @@ else\n fi\n \n # Re-evaluate after deleting arch rule: wget should go back\
+        \ to review\n-curl -sf -X POST \"$CURATION_URL/packages/re-evaluate\" \\\n+reset_fixture_packages \"$STAGING_RPM_ID\"\
         ; curl -sf -X POST \"$CURATION_URL/packages/re-evaluate\" \\\n     -H \"$AUTH\" -H 'Content-Type: application/json'\
-        \ \\\n     -d \"{\\\"staging_repo_id\\\":\\\"$STAGING_RPM_ID\\\",\\\"default_action\\\":\\\"review\\\"}\"\
-        )\n-pass \"Re-evaluated packages (count: $EVAL_COUNT)\"\n+[ \"$EVAL_COUNT\" = \"6\" ] || { fail \"Expected\
-        \ six pending fixture rows to be evaluated, got $EVAL_COUNT\"; exit 1; }\n+pass \"Re-evaluated six pending\
-        \ fixture packages\"\n \n # Verify telnet-server is blocked\n TELNET_STATUS=$(curl -sf \"$CURATION_URL/packages?staging_repo_id=$STAGING_RPM_ID&status=blocked\"\
-        \ \\\n@@ -229,7 +254,7 @@ else\n fi\n \n # Re-evaluate\n-curl -sf -X POST \"$CURATION_URL/packages/re-evaluate\"\
-        \ \\\n+reset_fixture_packages \"$STAGING_RPM_ID\"; curl -sf -X POST \"$CURATION_URL/packages/re-evaluate\"\
-        \ \\\n     -H \"$AUTH\" -H 'Content-Type: application/json' \\\n     -d \"{\\\"staging_repo_id\\\":\\\"\
-        $STAGING_RPM_ID\\\",\\\"default_action\\\":\\\"review\\\"}\" > /dev/null\n \n@@ -260,7 +285,7 @@ else\n\
-        \ fi\n \n # Re-evaluate\n-curl -sf -X POST \"$CURATION_URL/packages/re-evaluate\" \\\n+reset_fixture_packages\
-        \ \"$STAGING_RPM_ID\"; curl -sf -X POST \"$CURATION_URL/packages/re-evaluate\" \\\n     -H \"$AUTH\" -H\
-        \ 'Content-Type: application/json' \\\n     -d \"{\\\"staging_repo_id\\\":\\\"$STAGING_RPM_ID\\\",\\\"default_action\\\
-        \":\\\"review\\\"}\" > /dev/null\n \n@@ -292,7 +317,7 @@ else\n fi\n \n # Re-evaluate\n-curl -sf -X POST\
-        \ \"$CURATION_URL/packages/re-evaluate\" \\\n+reset_fixture_packages \"$STAGING_RPM_ID\"; curl -sf -X POST\
-        \ \"$CURATION_URL/packages/re-evaluate\" \\\n     -H \"$AUTH\" -H 'Content-Type: application/json' \\\n\
-        \     -d \"{\\\"staging_repo_id\\\":\\\"$STAGING_RPM_ID\\\",\\\"default_action\\\":\\\"review\\\"}\" > /dev/null\n\
-        \ \n@@ -438,7 +463,7 @@ else\n fi\n \n # Re-evaluate after deleting arch rule: wget should go back to review\n\
-        -curl -sf -X POST \"$CURATION_URL/packages/re-evaluate\" \\\n+reset_fixture_packages \"$STAGING_RPM_ID\"\
+        \ \\\n     -d \"{\\\"staging_repo_id\\\":\\\"$STAGING_RPM_ID\\\",\\\"default_action\\\":\\\"review\\\"}\" > /dev/null\n\
+        \ \n@@ -469,7 +494,7 @@ else\n fi\n \n # Re-evaluate: nano should now be blocked (global rule takes effect, priority\
+        \ 1 < 10)\n-curl -sf -X POST \"$CURATION_URL/packages/re-evaluate\" \\\n+reset_fixture_packages \"$STAGING_RPM_ID\"\
         ; curl -sf -X POST \"$CURATION_URL/packages/re-evaluate\" \\\n     -H \"$AUTH\" -H 'Content-Type: application/json'\
-        \ \\\n     -d \"{\\\"staging_repo_id\\\":\\\"$STAGING_RPM_ID\\\",\\\"default_action\\\":\\\"review\\\"}\"\
-        \ > /dev/null\n \n@@ -469,7 +494,7 @@ else\n fi\n \n # Re-evaluate: nano should now be blocked (global rule\
-        \ takes effect, priority 1 < 10)\n-curl -sf -X POST \"$CURATION_URL/packages/re-evaluate\" \\\n+reset_fixture_packages\
-        \ \"$STAGING_RPM_ID\"; curl -sf -X POST \"$CURATION_URL/packages/re-evaluate\" \\\n     -H \"$AUTH\" -H\
-        \ 'Content-Type: application/json' \\\n     -d \"{\\\"staging_repo_id\\\":\\\"$STAGING_RPM_ID\\\",\\\"default_action\\\
-        \":\\\"review\\\"}\" > /dev/null\n \n@@ -573,7 +598,7 @@ else\n fi\n \n # Re-evaluate DEB packages\n-curl\
-        \ -sf -X POST \"$CURATION_URL/packages/re-evaluate\" \\\n+reset_fixture_packages \"$STAGING_DEB_ID\"; curl\
-        \ -sf -X POST \"$CURATION_URL/packages/re-evaluate\" \\\n     -H \"$AUTH\" -H 'Content-Type: application/json'\
-        \ \\\n     -d \"{\\\"staging_repo_id\\\":\\\"$STAGING_DEB_ID\\\",\\\"default_action\\\":\\\"allow\\\"}\"\
-        \ > /dev/null\n \ndiff --git a/scripts/native-tests/test-deb-hosted.py b/scripts/native-tests/test-deb-hosted.py\n\
-        new file mode 100644\nindex 00000000..97a53ce2\n--- /dev/null\n+++ b/scripts/native-tests/test-deb-hosted.py\n\
-        @@ -0,0 +1,79 @@\n+#!/usr/bin/env python3\n+\"\"\"Verify a hosted Debian repository with isolated native\
-        \ APT state.\n+\n+Uses a synthetic unsigned package, queries suite/component metadata, and checks\n+that\
-        \ APT downloads the exact bytes uploaded. Does not install packages or\n+change the host's APT configuration.\
-        \ Requires dpkg-deb and apt-get.\n+\"\"\"\n+import os, json, time, hashlib, urllib.request, urllib.error,\
-        \ subprocess, tempfile, pathlib, zipfile, io\n+BASE = 'http://127.0.0.1:18080'\n+TOKEN = None\n+ROOT = pathlib.Path.cwd()\n\
-        +PROFILE = 'deb'\n+\n+def api(method, path, data=None, headers=None):\n+    h = dict(headers or {})\n+ \
-        \   if TOKEN:\n+        h['Authorization'] = 'Bearer ' + TOKEN\n+    if isinstance(data, dict):\n+     \
-        \   data = json.dumps(data).encode()\n+        h['Content-Type'] = 'application/json'\n+    r = urllib.request.Request(BASE\
-        \ + path, data=data, headers=h, method=method)\n+    try:\n+        with urllib.request.urlopen(r, timeout=30)\
-        \ as f:\n+            return (f.status, f.read())\n+    except urllib.error.HTTPError as e:\n+        return\
-        \ (e.code, e.read())\n+\n+def ok(method, path, data=None, headers=None):\n+    code, body = api(method,\
-        \ path, data, headers)\n+    assert 200 <= code < 300, (method, path, code, body[:180])\n+    return body\n\
+        \ \\\n     -d \"{\\\"staging_repo_id\\\":\\\"$STAGING_RPM_ID\\\",\\\"default_action\\\":\\\"review\\\"}\" > /dev/null\n\
+        \ \n@@ -573,7 +598,7 @@ else\n fi\n \n # Re-evaluate DEB packages\n-curl -sf -X POST \"$CURATION_URL/packages/re-evaluate\"\
+        \ \\\n+reset_fixture_packages \"$STAGING_DEB_ID\"; curl -sf -X POST \"$CURATION_URL/packages/re-evaluate\" \\\n  \
+        \   -H \"$AUTH\" -H 'Content-Type: application/json' \\\n     -d \"{\\\"staging_repo_id\\\":\\\"$STAGING_DEB_ID\\\"\
+        ,\\\"default_action\\\":\\\"allow\\\"}\" > /dev/null\n \ndiff --git a/scripts/native-tests/test-deb-hosted.py b/scripts/native-tests/test-deb-hosted.py\n\
+        new file mode 100644\nindex 00000000..97a53ce2\n--- /dev/null\n+++ b/scripts/native-tests/test-deb-hosted.py\n@@ -0,0\
+        \ +1,79 @@\n+#!/usr/bin/env python3\n+\"\"\"Verify a hosted Debian repository with isolated native APT state.\n+\n\
+        +Uses a synthetic unsigned package, queries suite/component metadata, and checks\n+that APT downloads the exact bytes\
+        \ uploaded. Does not install packages or\n+change the host's APT configuration. Requires dpkg-deb and apt-get.\n+\"\
+        \"\"\n+import os, json, time, hashlib, urllib.request, urllib.error, subprocess, tempfile, pathlib, zipfile, io\n\
+        +BASE = 'http://127.0.0.1:18080'\n+TOKEN = None\n+ROOT = pathlib.Path.cwd()\n+PROFILE = 'deb'\n+\n+def api(method,\
+        \ path, data=None, headers=None):\n+    h = dict(headers or {})\n+    if TOKEN:\n+        h['Authorization'] = 'Bearer\
+        \ ' + TOKEN\n+    if isinstance(data, dict):\n+        data = json.dumps(data).encode()\n+        h['Content-Type']\
+        \ = 'application/json'\n+    r = urllib.request.Request(BASE + path, data=data, headers=h, method=method)\n+    try:\n\
+        +        with urllib.request.urlopen(r, timeout=30) as f:\n+            return (f.status, f.read())\n+    except urllib.error.HTTPError\
+        \ as e:\n+        return (e.code, e.read())\n+\n+def ok(method, path, data=None, headers=None):\n+    code, body =\
+        \ api(method, path, data, headers)\n+    assert 200 <= code < 300, (method, path, code, body[:180])\n+    return body\n\
         +\n+def cmd(args, **kw):\n+    r = subprocess.run(args, text=True, capture_output=True, **kw)\n+    if r.returncode:\n\
-        +        print(r.stdout[-4000:], flush=True)\n+        print(r.stderr[-4000:], flush=True)\n+        raise\
-        \ RuntimeError('native command failed: ' + args[0] + ' exit=' + str(r.returncode))\n+    return r.stdout\n\
-        +for _ in range(90):\n+    try:\n+        if api('GET', '/health')[0] == 200:\n+            break\n+   \
-        \ except OSError:\n+        pass\n+    time.sleep(1)\n+else:\n+    raise AssertionError('backend readiness\
-        \ timed out')\n+TOKEN = json.loads(ok('POST', '/api/v1/auth/login', {'username': 'admin', 'password': os.environ['ADMIN_PASS']}))['access_token']\n\
-        +key = 'strict-' + PROFILE\n+fmt = 'debian'\n+ok('POST', '/api/v1/repositories', {'key': key, 'name': 'Synthetic\
-        \ ' + PROFILE, 'format': fmt, 'repo_type': 'local', 'is_public': True})\n+with tempfile.TemporaryDirectory()\
-        \ as td:\n+    d = pathlib.Path(td)\n+    d.chmod(493)\n+    pkg = d / 'pkg'\n+    (pkg / 'DEBIAN').mkdir(parents=True)\n\
-        +    (pkg / 'usr/share/ca-native-deb').mkdir(parents=True)\n+    (pkg / 'DEBIAN/control').write_text('Package:\
-        \ ca-native-deb\\nVersion: 1.0.0\\nArchitecture: all\\nMaintainer: Test <test@example.com>\\nDescription:\
-        \ synthetic validation package\\n')\n+    (pkg / 'usr/share/ca-native-deb/data').write_text('synthetic fixture\\\
-        n')\n+    package = d / 'ca-native-deb_1.0.0_all.deb'\n+    cmd(['dpkg-deb', '--build', '--root-owner-group',\
-        \ str(pkg), str(package)])\n+    path = '/debian/' + key + '/pool/main/c/ca-native-deb/' + package.name\n\
-        +    ok('PUT', path, package.read_bytes(), {'Content-Type': 'application/vnd.debian.binary-package'})\n\
-        +    assert ok('GET', path) == package.read_bytes()\n+    lists = d / 'lists'\n+    (lists / 'partial').mkdir(parents=True)\n\
-        +    cache = d / 'apt-cache'\n+    (cache / 'archives/partial').mkdir(parents=True)\n+    sources = d /\
-        \ 'sources.list'\n+    sources.write_text('deb [trusted=yes] ' + BASE + '/debian/' + key + ' stable main\\\
-        n')\n+    parts = d / 'parts'\n+    parts.mkdir()\n+    opts = ['-o', 'Dir::Etc::sourcelist=' + str(sources),\
-        \ '-o', 'Dir::Etc::sourceparts=' + str(parts), '-o', 'Dir::State::lists=' + str(lists), '-o', 'Dir::Cache='\
-        \ + str(cache), '-o', 'APT::Get::List-Cleanup=0']\n+    cmd(['apt-get', *opts, 'update'])\n+    (d / 'download').mkdir()\n\
-        +    cmd(['apt-get', *opts, 'download', 'ca-native-deb=1.0.0'], cwd=d / 'download')\n+    assert (d / 'download'\
-        \ / package.name).read_bytes() == package.read_bytes()\n+    print('PASS: strict DEB build/upload, native\
-        \ APT metadata/download and byte equality (unsigned test fixture)')\ndiff --git a/scripts/native-tests/test-hex.sh\
-        \ b/scripts/native-tests/test-hex.sh\nindex 3b539a8e..ef5f4dc3 100755\n--- a/scripts/native-tests/test-hex.sh\n\
-        +++ b/scripts/native-tests/test-hex.sh\n@@ -91,22 +91,21 @@ else\n     exit 1\n fi\n \n-# ---- Test 2: Package\
-        \ info endpoint ----\n-echo \"==> [2/6] Verifying package info endpoint...\"\n-INFO_CODE=$(curl -s -o \"\
-        $WORK_DIR/info.json\" -w \"%{http_code}\" \\\n-  \"$HEX_URL/packages/$PKG_NAME\")\n-if [ \"$INFO_CODE\"\
-        \ = \"200\" ]; then\n-    PKG=$(jq -r '.name // \"\"' \"$WORK_DIR/info.json\" 2>/dev/null || echo \"\")\n\
-        -    if [ \"$PKG\" = \"$PKG_NAME\" ]; then\n-        echo \"  Package info returned correctly\"\n-    else\n\
-        -        echo \"  FAIL: Package name mismatch (got: $PKG)\"\n-        exit 1\n-    fi\n-else\n-    echo\
-        \ \"  FAIL: Package info returned HTTP $INFO_CODE\"\n-    exit 1\n-fi\n+# ---- Test 2: Signed protobuf registry\
-        \ and native Hex verification ----\n+echo \"==> [2/6] Verifying signed registry resources...\"\n+curl -fsS\
-        \ \"$HEX_URL/public_key\" -o \"$WORK_DIR/registry-key.pem\"\n+for resource in \"packages/$PKG_NAME\" names\
-        \ versions; do\n+    file=\"$WORK_DIR/$(basename \"$resource\").gz\"\n+    curl -fsS \"$HEX_URL/$resource\"\
-        \ -o \"$file\"\n+    python3 \"$(dirname \"$0\")/verify-hex-resource.py\" \"$file\" \"$WORK_DIR/registry-key.pem\"\
-        \ \"$PKG_NAME\" \"$TEST_VERSION\" \"$HEX_REPO_KEY\" \"$resource\"\n+done\n+command -v mix >/dev/null ||\
-        \ { echo \"FAIL: native Mix client is required\"; exit 1; }\n+export MIX_HOME=\"$WORK_DIR/mix\" HEX_HOME=\"\
-        $WORK_DIR/hex\"\n+mix local.hex 2.5.2 --force\n+mix hex.repo add \"$HEX_REPO_KEY\" \"$HEX_URL\" --public-key=\"\
-        $WORK_DIR/registry-key.pem\"\n+mix hex.package fetch \"$PKG_NAME\" \"$TEST_VERSION\" --repo=\"$HEX_REPO_KEY\"\
-        \ --output=\"$WORK_DIR/native\"\n+cmp \"$TARBALL\" \"$WORK_DIR/native/${PKG_NAME}-${TEST_VERSION}.tar\"\n\
-        +echo \"  Native Hex fetched and verified the exact published tarball\"\n \n # ---- Test 3: Download tarball\
-        \ ----\n echo \"==> [3/6] Downloading tarball...\"\n@@ -144,45 +143,6 @@ else\n     exit 1\n fi\n \n-# ----\
-        \ Test 5: List names endpoint ----\n-echo \"==> [5/6] Verifying names endpoint...\"\n-NAMES_CODE=$(curl\
-        \ -s -o \"$WORK_DIR/names.json\" -w \"%{http_code}\" \\\n-  \"$HEX_URL/names\")\n-if [ \"$NAMES_CODE\" =\
-        \ \"200\" ]; then\n-    if grep -q \"$PKG_NAME\" \"$WORK_DIR/names.json\" 2>/dev/null; then\n-        echo\
-        \ \"  Names endpoint lists $PKG_NAME\"\n-    else\n-        echo \"  FAIL: Names endpoint doesn't contain\
-        \ $PKG_NAME\"\n-        cat \"$WORK_DIR/names.json\"\n-        exit 1\n-    fi\n-else\n-    echo \"  FAIL:\
-        \ Names endpoint returned HTTP $NAMES_CODE\"\n-    exit 1\n-fi\n-\n-# ---- Test 6: List versions endpoint\
-        \ ----\n-echo \"==> [6/6] Verifying versions endpoint...\"\n-VERSIONS_CODE=$(curl -s -o \"$WORK_DIR/versions.json\"\
-        \ -w \"%{http_code}\" \\\n-  \"$HEX_URL/versions\")\n-if [ \"$VERSIONS_CODE\" = \"200\" ]; then\n-    if\
-        \ grep -q \"$TEST_VERSION\" \"$WORK_DIR/versions.json\" 2>/dev/null; then\n-        echo \"  Versions endpoint\
-        \ lists $PKG_NAME@$TEST_VERSION\"\n-    else\n-        echo \"  FAIL: Versions endpoint doesn't contain\
-        \ $TEST_VERSION\"\n-        cat \"$WORK_DIR/versions.json\"\n-        exit 1\n-    fi\n-else\n-    echo\
-        \ \"  FAIL: Versions endpoint returned HTTP $VERSIONS_CODE\"\n-    exit 1\n-fi\n-\n-echo \"\"\n-echo \"\
-        All Hex native client tests PASSED\"\n-echo \"   Publish (raw tarball)           OK\"\n-echo \"   Package\
-        \ info                    OK\"\n-echo \"   Tarball download                OK\"\n-echo \"   Tarball content\
-        \ verification    OK\"\n-echo \"   Names listing                   OK\"\n-echo \"   Versions listing   \
-        \             OK\"\n+echo \"==> [5/6] Signed names resource verified\"\n+echo \"==> [6/6] Signed versions\
-        \ resource verified\"\n+echo \"PASS: Hex publish, signed registry, native fetch and content round-trip\"\
-        \ndiff --git a/scripts/native-tests/test-protobuf.sh b/scripts/native-tests/test-protobuf.sh\nindex ef66cecf..0eaa895e\
-        \ 100755\n--- a/scripts/native-tests/test-protobuf.sh\n+++ b/scripts/native-tests/test-protobuf.sh\n@@ -115,6\
-        \ +115,13 @@ if [ -z \"$COMMIT_ID\" ] || [ \"$COMMIT_ID\" = \"null\" ]; then\n fi\n echo \"  Uploaded commit:\
-        \ ${COMMIT_ID:0:16}...\"\n \n+# An unauthenticated Connect request must still be refused.\n+UNAUTH_STATUS=$(curl\
-        \ -sS -o /dev/null -w \"%{http_code}\" -X POST \\\n+  \"$REGISTRY_URL/proto/$REPO_KEY/buf.registry.module.v1.ModuleService/GetModules\"\
-        \ \\\n+  -H \"Content-Type: application/json\" \\\n+  -d '{\"moduleRefs\": [{\"owner\": \"acme\", \"module\"\
-        : \"payments\"}]}')\n+[ \"$UNAUTH_STATUS\" = \"401\" ] || { echo \"ERROR: unauthenticated RPC returned $UNAUTH_STATUS\"\
-        ; exit 1; }\n+\n # --------------------------------------------------------------------------\n # Test 2:\
-        \ GetModules \u2014 verify module exists\n # --------------------------------------------------------------------------\n\
-        @@ -122,16 +129,17 @@ echo \"==> Test 2: GetModules...\"\n \n MODULES_RESP=$(curl -sf -X POST \\\n   \"\
-        $REGISTRY_URL/proto/$REPO_KEY/buf.registry.module.v1.ModuleService/GetModules\" \\\n+  -H \"Authorization:\
-        \ Bearer $TOKEN\" \\\n   -H \"Content-Type: application/json\" \\\n   -d '{\"moduleRefs\": [{\"owner\":\
-        \ \"acme\", \"module\": \"payments\"}]}')\n \n MODULE_NAME=$(echo \"$MODULES_RESP\" | jq -r '.modules[0].name')\n\
-        -if [ \"$MODULE_NAME\" != \"payments\" ]; then\n+if [ \"$MODULE_NAME\" != \"acme/payments\" ]; then\n  \
-        \ echo \"ERROR: GetModules returned unexpected name: $MODULE_NAME\"\n   echo \"$MODULES_RESP\"\n   exit\
-        \ 1\n fi\n-echo \"  Module found: acme/$MODULE_NAME\"\n+echo \"  Module found: $MODULE_NAME\"\n \n # --------------------------------------------------------------------------\n\
-        \ # Test 3: GetLabels \u2014 verify labels were created\n@@ -140,6 +148,7 @@ echo \"==> Test 3: GetLabels...\"\
-        \n \n LABELS_RESP=$(curl -sf -X POST \\\n   \"$REGISTRY_URL/proto/$REPO_KEY/buf.registry.module.v1.LabelService/GetLabels\"\
-        \ \\\n+  -H \"Authorization: Bearer $TOKEN\" \\\n   -H \"Content-Type: application/json\" \\\n   -d '{\"\
-        labelRefs\": [{\"owner\": \"acme\", \"module\": \"payments\"}]}')\n \n@@ -158,6 +167,7 @@ echo \"==> Test\
-        \ 4: GetCommits (resolve by label)...\"\n \n COMMITS_RESP=$(curl -sf -X POST \\\n   \"$REGISTRY_URL/proto/$REPO_KEY/buf.registry.module.v1.CommitService/GetCommits\"\
-        \ \\\n+  -H \"Authorization: Bearer $TOKEN\" \\\n   -H \"Content-Type: application/json\" \\\n   -d '{\"\
-        resourceRefs\": [{\"owner\": \"acme\", \"module\": \"payments\", \"label\": \"main\"}]}')\n \n@@ -175,6\
-        \ +185,7 @@ echo \"==> Test 5: Download module (buf dep update equivalent)...\"\n \n DOWNLOAD_RESP=$(curl\
-        \ -sf -X POST \\\n   \"$REGISTRY_URL/proto/$REPO_KEY/buf.registry.module.v1beta1.DownloadService/Download\"\
-        \ \\\n+  -H \"Authorization: Bearer $TOKEN\" \\\n   -H \"Content-Type: application/json\" \\\n   -d '{\"\
-        values\": [{\"resourceRef\": {\"owner\": \"acme\", \"module\": \"payments\", \"label\": \"v1.0.0\"}}]}')\n\
-        \ \n@@ -202,6 +213,7 @@ echo \"==> Test 6: ListCommits...\"\n \n LIST_RESP=$(curl -sf -X POST \\\n   \"\
-        $REGISTRY_URL/proto/$REPO_KEY/buf.registry.module.v1.CommitService/ListCommits\" \\\n+  -H \"Authorization:\
-        \ Bearer $TOKEN\" \\\n   -H \"Content-Type: application/json\" \\\n   -d '{\"owner\": \"acme\", \"module\"\
-        : \"payments\", \"pageSize\": 10}')\n \n@@ -237,15 +249,16 @@ echo \"==> Test 8: GetResources...\"\n \n\
-        \ RESOURCES_RESP=$(curl -sf -X POST \\\n   \"$REGISTRY_URL/proto/$REPO_KEY/buf.registry.module.v1.ResourceService/GetResources\"\
-        \ \\\n+  -H \"Authorization: Bearer $TOKEN\" \\\n   -H \"Content-Type: application/json\" \\\n   -d '{\"\
-        resourceRefs\": [{\"owner\": \"acme\", \"module\": \"payments\", \"label\": \"main\"}]}')\n \n RESOURCE_MODULE=$(echo\
-        \ \"$RESOURCES_RESP\" | jq -r '.resources[0].module.name')\n-if [ \"$RESOURCE_MODULE\" != \"payments\" ];\
-        \ then\n+if [ \"$RESOURCE_MODULE\" != \"acme/payments\" ]; then\n   echo \"ERROR: GetResources returned\
-        \ unexpected module: $RESOURCE_MODULE\"\n   exit 1\n fi\n-echo \"  Resource resolved: acme/$RESOURCE_MODULE\"\
-        \n+echo \"  Resource resolved: $RESOURCE_MODULE\"\n \n # --------------------------------------------------------------------------\n\
-        \ # Test 9: Write rejection on remote repo\ndiff --git a/scripts/native-tests/verify-hex-resource.py b/scripts/native-tests/verify-hex-resource.py\n\
-        new file mode 100644\nindex 00000000..198a28cd\n--- /dev/null\n+++ b/scripts/native-tests/verify-hex-resource.py\n\
-        @@ -0,0 +1,72 @@\n+\"\"\"Verify Hex registry signatures and the fixture's protobuf identities.\"\"\"\n+import\
-        \ gzip\n+import hashlib\n+from pathlib import Path\n+import subprocess\n+import sys\n+import tempfile\n\
-        +\n+\n+def fields(data):\n+    \"\"\"Decode the small protobuf wire subset used by Hex registry resources.\"\
-        \"\"\n+    position = 0\n+\n+    def varint():\n+        nonlocal position\n+        value = 0\n+      \
-        \  for shift in range(0, 70, 7):\n+            assert position < len(data), \"truncated protobuf varint\"\
-        \n+            byte = data[position]\n+            position += 1\n+            value |= (byte & 127) <<\
-        \ shift\n+            if byte < 128:\n+                return value\n+        raise AssertionError(\"oversized\
-        \ protobuf varint\")\n+\n+    result = {}\n+    while position < len(data):\n+        tag = varint()\n+\
-        \        number, wire = tag >> 3, tag & 7\n+        assert number, \"invalid protobuf field\"\n+       \
-        \ if wire == 0:\n+            value = varint()\n+        elif wire == 2:\n+            length = varint()\n\
-        +            assert position + length <= len(data), \"truncated protobuf field\"\n+            value = data[position:position\
-        \ + length]\n+            position += length\n+        else:\n+            raise AssertionError(f\"unexpected\
-        \ protobuf wire type {wire}\")\n+        result.setdefault(number, []).append(value)\n+    return result\n\
-        +\n+\n+resource, public_key, name, version, repository, kind = sys.argv[1:]\n+envelope = fields(gzip.decompress(Path(resource).read_bytes()))\n\
-        +assert len(envelope[1]) == len(envelope[2]) == 1\n+payload, signature = envelope[1][0], envelope[2][0]\n\
-        +with tempfile.TemporaryDirectory() as directory:\n+    path = Path(directory)\n+    (path / \"payload\"\
-        ).write_bytes(payload)\n+    (path / \"signature\").write_bytes(signature)\n+    subprocess.run([\"openssl\"\
-        , \"dgst\", \"-sha512\", \"-verify\", public_key,\n+                    \"-signature\", str(path / \"signature\"\
-        ), str(path / \"payload\")], check=True)\n+message = fields(payload)\n+if kind.startswith(\"packages/\"\
-        ):\n+    assert message[2] == [name.encode()]\n+    assert message[3] == [repository.encode()]\n+    releases\
-        \ = [fields(value) for value in message[1]]\n+    release = next(value for value in releases if value[1]\
-        \ == [version.encode()])\n+    tarball = Path(resource).parent / f\"{name}-{version}.tar\"\n+    assert\
-        \ release[5] == [hashlib.sha256(tarball.read_bytes()).digest()]\n+    import tarfile\n+    with tarfile.open(tarball)\
-        \ as archive:\n+        expected = archive.extractfile(\"CHECKSUM\").read().strip().decode()\n+    assert\
-        \ release[2] == [bytes.fromhex(expected)]\n+else:\n+    assert message[2] == [repository.encode()]\n+  \
-        \  package = next(fields(value) for value in message[1]\n+                   if fields(value)[1] == [name.encode()])\n\
-        +    if kind == \"versions\":\n+        assert version.encode() in package[2]\n+print(f\"PASS: authenticated\
-        \ Hex {kind}\")\nPATCH\ngit apply --check /tmp/native-setups.patch\ngit apply /tmp/native-setups.patch\n\
-        bash -n scripts/native-tests/test-curation.sh\n"
+        +        print(r.stdout[-4000:], flush=True)\n+        print(r.stderr[-4000:], flush=True)\n+        raise RuntimeError('native\
+        \ command failed: ' + args[0] + ' exit=' + str(r.returncode))\n+    return r.stdout\n+for _ in range(90):\n+    try:\n\
+        +        if api('GET', '/health')[0] == 200:\n+            break\n+    except OSError:\n+        pass\n+    time.sleep(1)\n\
+        +else:\n+    raise AssertionError('backend readiness timed out')\n+TOKEN = json.loads(ok('POST', '/api/v1/auth/login',\
+        \ {'username': 'admin', 'password': os.environ['ADMIN_PASS']}))['access_token']\n+key = 'strict-' + PROFILE\n+fmt\
+        \ = 'debian'\n+ok('POST', '/api/v1/repositories', {'key': key, 'name': 'Synthetic ' + PROFILE, 'format': fmt, 'repo_type':\
+        \ 'local', 'is_public': True})\n+with tempfile.TemporaryDirectory() as td:\n+    d = pathlib.Path(td)\n+    d.chmod(493)\n\
+        +    pkg = d / 'pkg'\n+    (pkg / 'DEBIAN').mkdir(parents=True)\n+    (pkg / 'usr/share/ca-native-deb').mkdir(parents=True)\n\
+        +    (pkg / 'DEBIAN/control').write_text('Package: ca-native-deb\\nVersion: 1.0.0\\nArchitecture: all\\nMaintainer:\
+        \ Test <test@example.com>\\nDescription: synthetic validation package\\n')\n+    (pkg / 'usr/share/ca-native-deb/data').write_text('synthetic\
+        \ fixture\\n')\n+    package = d / 'ca-native-deb_1.0.0_all.deb'\n+    cmd(['dpkg-deb', '--build', '--root-owner-group',\
+        \ str(pkg), str(package)])\n+    path = '/debian/' + key + '/pool/main/c/ca-native-deb/' + package.name\n+    ok('PUT',\
+        \ path, package.read_bytes(), {'Content-Type': 'application/vnd.debian.binary-package'})\n+    assert ok('GET', path)\
+        \ == package.read_bytes()\n+    lists = d / 'lists'\n+    (lists / 'partial').mkdir(parents=True)\n+    cache = d\
+        \ / 'apt-cache'\n+    (cache / 'archives/partial').mkdir(parents=True)\n+    sources = d / 'sources.list'\n+    sources.write_text('deb\
+        \ [trusted=yes] ' + BASE + '/debian/' + key + ' stable main\\n')\n+    parts = d / 'parts'\n+    parts.mkdir()\n+\
+        \    opts = ['-o', 'Dir::Etc::sourcelist=' + str(sources), '-o', 'Dir::Etc::sourceparts=' + str(parts), '-o', 'Dir::State::lists='\
+        \ + str(lists), '-o', 'Dir::Cache=' + str(cache), '-o', 'APT::Get::List-Cleanup=0']\n+    cmd(['apt-get', *opts, 'update'])\n\
+        +    (d / 'download').mkdir()\n+    cmd(['apt-get', *opts, 'download', 'ca-native-deb=1.0.0'], cwd=d / 'download')\n\
+        +    assert (d / 'download' / package.name).read_bytes() == package.read_bytes()\n+    print('PASS: strict DEB build/upload,\
+        \ native APT metadata/download and byte equality (unsigned test fixture)')\ndiff --git a/scripts/native-tests/test-hex.sh\
+        \ b/scripts/native-tests/test-hex.sh\nindex 3b539a8e..ef5f4dc3 100755\n--- a/scripts/native-tests/test-hex.sh\n+++\
+        \ b/scripts/native-tests/test-hex.sh\n@@ -91,22 +91,21 @@ else\n     exit 1\n fi\n \n-# ---- Test 2: Package info\
+        \ endpoint ----\n-echo \"==> [2/6] Verifying package info endpoint...\"\n-INFO_CODE=$(curl -s -o \"$WORK_DIR/info.json\"\
+        \ -w \"%{http_code}\" \\\n-  \"$HEX_URL/packages/$PKG_NAME\")\n-if [ \"$INFO_CODE\" = \"200\" ]; then\n-    PKG=$(jq\
+        \ -r '.name // \"\"' \"$WORK_DIR/info.json\" 2>/dev/null || echo \"\")\n-    if [ \"$PKG\" = \"$PKG_NAME\" ]; then\n\
+        -        echo \"  Package info returned correctly\"\n-    else\n-        echo \"  FAIL: Package name mismatch (got:\
+        \ $PKG)\"\n-        exit 1\n-    fi\n-else\n-    echo \"  FAIL: Package info returned HTTP $INFO_CODE\"\n-    exit\
+        \ 1\n-fi\n+# ---- Test 2: Signed protobuf registry and native Hex verification ----\n+echo \"==> [2/6] Verifying signed\
+        \ registry resources...\"\n+curl -fsS \"$HEX_URL/public_key\" -o \"$WORK_DIR/registry-key.pem\"\n+for resource in\
+        \ \"packages/$PKG_NAME\" names versions; do\n+    file=\"$WORK_DIR/$(basename \"$resource\").gz\"\n+    curl -fsS\
+        \ \"$HEX_URL/$resource\" -o \"$file\"\n+    python3 \"$(dirname \"$0\")/verify-hex-resource.py\" \"$file\" \"$WORK_DIR/registry-key.pem\"\
+        \ \"$PKG_NAME\" \"$TEST_VERSION\" \"$HEX_REPO_KEY\" \"$resource\"\n+done\n+command -v mix >/dev/null || { echo \"\
+        FAIL: native Mix client is required\"; exit 1; }\n+export MIX_HOME=\"$WORK_DIR/mix\" HEX_HOME=\"$WORK_DIR/hex\"\n\
+        +mix local.hex 2.5.2 --force\n+mix hex.repo add \"$HEX_REPO_KEY\" \"$HEX_URL\" --public-key=\"$WORK_DIR/registry-key.pem\"\
+        \n+mix hex.package fetch \"$PKG_NAME\" \"$TEST_VERSION\" --repo=\"$HEX_REPO_KEY\" --output=\"$WORK_DIR/native\"\n\
+        +cmp \"$TARBALL\" \"$WORK_DIR/native/${PKG_NAME}-${TEST_VERSION}.tar\"\n+echo \"  Native Hex fetched and verified\
+        \ the exact published tarball\"\n \n # ---- Test 3: Download tarball ----\n echo \"==> [3/6] Downloading tarball...\"\
+        \n@@ -144,45 +143,6 @@ else\n     exit 1\n fi\n \n-# ---- Test 5: List names endpoint ----\n-echo \"==> [5/6] Verifying\
+        \ names endpoint...\"\n-NAMES_CODE=$(curl -s -o \"$WORK_DIR/names.json\" -w \"%{http_code}\" \\\n-  \"$HEX_URL/names\"\
+        )\n-if [ \"$NAMES_CODE\" = \"200\" ]; then\n-    if grep -q \"$PKG_NAME\" \"$WORK_DIR/names.json\" 2>/dev/null; then\n\
+        -        echo \"  Names endpoint lists $PKG_NAME\"\n-    else\n-        echo \"  FAIL: Names endpoint doesn't contain\
+        \ $PKG_NAME\"\n-        cat \"$WORK_DIR/names.json\"\n-        exit 1\n-    fi\n-else\n-    echo \"  FAIL: Names endpoint\
+        \ returned HTTP $NAMES_CODE\"\n-    exit 1\n-fi\n-\n-# ---- Test 6: List versions endpoint ----\n-echo \"==> [6/6]\
+        \ Verifying versions endpoint...\"\n-VERSIONS_CODE=$(curl -s -o \"$WORK_DIR/versions.json\" -w \"%{http_code}\" \\\
+        \n-  \"$HEX_URL/versions\")\n-if [ \"$VERSIONS_CODE\" = \"200\" ]; then\n-    if grep -q \"$TEST_VERSION\" \"$WORK_DIR/versions.json\"\
+        \ 2>/dev/null; then\n-        echo \"  Versions endpoint lists $PKG_NAME@$TEST_VERSION\"\n-    else\n-        echo\
+        \ \"  FAIL: Versions endpoint doesn't contain $TEST_VERSION\"\n-        cat \"$WORK_DIR/versions.json\"\n-       \
+        \ exit 1\n-    fi\n-else\n-    echo \"  FAIL: Versions endpoint returned HTTP $VERSIONS_CODE\"\n-    exit 1\n-fi\n\
+        -\n-echo \"\"\n-echo \"All Hex native client tests PASSED\"\n-echo \"   Publish (raw tarball)           OK\"\n-echo\
+        \ \"   Package info                    OK\"\n-echo \"   Tarball download                OK\"\n-echo \"   Tarball content\
+        \ verification    OK\"\n-echo \"   Names listing                   OK\"\n-echo \"   Versions listing             \
+        \   OK\"\n+echo \"==> [5/6] Signed names resource verified\"\n+echo \"==> [6/6] Signed versions resource verified\"\
+        \n+echo \"PASS: Hex publish, signed registry, native fetch and content round-trip\"\ndiff --git a/scripts/native-tests/test-protobuf.sh\
+        \ b/scripts/native-tests/test-protobuf.sh\nindex ef66cecf..0eaa895e 100755\n--- a/scripts/native-tests/test-protobuf.sh\n\
+        +++ b/scripts/native-tests/test-protobuf.sh\n@@ -115,6 +115,13 @@ if [ -z \"$COMMIT_ID\" ] || [ \"$COMMIT_ID\" = \"\
+        null\" ]; then\n fi\n echo \"  Uploaded commit: ${COMMIT_ID:0:16}...\"\n \n+# An unauthenticated Connect request must\
+        \ still be refused.\n+UNAUTH_STATUS=$(curl -sS -o /dev/null -w \"%{http_code}\" -X POST \\\n+  \"$REGISTRY_URL/proto/$REPO_KEY/buf.registry.module.v1.ModuleService/GetModules\"\
+        \ \\\n+  -H \"Content-Type: application/json\" \\\n+  -d '{\"moduleRefs\": [{\"owner\": \"acme\", \"module\": \"payments\"\
+        }]}')\n+[ \"$UNAUTH_STATUS\" = \"401\" ] || { echo \"ERROR: unauthenticated RPC returned $UNAUTH_STATUS\"; exit 1;\
+        \ }\n+\n # --------------------------------------------------------------------------\n # Test 2: GetModules \u2014\
+        \ verify module exists\n # --------------------------------------------------------------------------\n@@ -122,16\
+        \ +129,17 @@ echo \"==> Test 2: GetModules...\"\n \n MODULES_RESP=$(curl -sf -X POST \\\n   \"$REGISTRY_URL/proto/$REPO_KEY/buf.registry.module.v1.ModuleService/GetModules\"\
+        \ \\\n+  -H \"Authorization: Bearer $TOKEN\" \\\n   -H \"Content-Type: application/json\" \\\n   -d '{\"moduleRefs\"\
+        : [{\"owner\": \"acme\", \"module\": \"payments\"}]}')\n \n MODULE_NAME=$(echo \"$MODULES_RESP\" | jq -r '.modules[0].name')\n\
+        -if [ \"$MODULE_NAME\" != \"payments\" ]; then\n+if [ \"$MODULE_NAME\" != \"acme/payments\" ]; then\n   echo \"ERROR:\
+        \ GetModules returned unexpected name: $MODULE_NAME\"\n   echo \"$MODULES_RESP\"\n   exit 1\n fi\n-echo \"  Module\
+        \ found: acme/$MODULE_NAME\"\n+echo \"  Module found: $MODULE_NAME\"\n \n # --------------------------------------------------------------------------\n\
+        \ # Test 3: GetLabels \u2014 verify labels were created\n@@ -140,6 +148,7 @@ echo \"==> Test 3: GetLabels...\"\n \n\
+        \ LABELS_RESP=$(curl -sf -X POST \\\n   \"$REGISTRY_URL/proto/$REPO_KEY/buf.registry.module.v1.LabelService/GetLabels\"\
+        \ \\\n+  -H \"Authorization: Bearer $TOKEN\" \\\n   -H \"Content-Type: application/json\" \\\n   -d '{\"labelRefs\"\
+        : [{\"owner\": \"acme\", \"module\": \"payments\"}]}')\n \n@@ -158,6 +167,7 @@ echo \"==> Test 4: GetCommits (resolve\
+        \ by label)...\"\n \n COMMITS_RESP=$(curl -sf -X POST \\\n   \"$REGISTRY_URL/proto/$REPO_KEY/buf.registry.module.v1.CommitService/GetCommits\"\
+        \ \\\n+  -H \"Authorization: Bearer $TOKEN\" \\\n   -H \"Content-Type: application/json\" \\\n   -d '{\"resourceRefs\"\
+        : [{\"owner\": \"acme\", \"module\": \"payments\", \"label\": \"main\"}]}')\n \n@@ -175,6 +185,7 @@ echo \"==> Test\
+        \ 5: Download module (buf dep update equivalent)...\"\n \n DOWNLOAD_RESP=$(curl -sf -X POST \\\n   \"$REGISTRY_URL/proto/$REPO_KEY/buf.registry.module.v1beta1.DownloadService/Download\"\
+        \ \\\n+  -H \"Authorization: Bearer $TOKEN\" \\\n   -H \"Content-Type: application/json\" \\\n   -d '{\"values\":\
+        \ [{\"resourceRef\": {\"owner\": \"acme\", \"module\": \"payments\", \"label\": \"v1.0.0\"}}]}')\n \n@@ -202,6 +213,7\
+        \ @@ echo \"==> Test 6: ListCommits...\"\n \n LIST_RESP=$(curl -sf -X POST \\\n   \"$REGISTRY_URL/proto/$REPO_KEY/buf.registry.module.v1.CommitService/ListCommits\"\
+        \ \\\n+  -H \"Authorization: Bearer $TOKEN\" \\\n   -H \"Content-Type: application/json\" \\\n   -d '{\"owner\": \"\
+        acme\", \"module\": \"payments\", \"pageSize\": 10}')\n \n@@ -237,15 +249,16 @@ echo \"==> Test 8: GetResources...\"\
+        \n \n RESOURCES_RESP=$(curl -sf -X POST \\\n   \"$REGISTRY_URL/proto/$REPO_KEY/buf.registry.module.v1.ResourceService/GetResources\"\
+        \ \\\n+  -H \"Authorization: Bearer $TOKEN\" \\\n   -H \"Content-Type: application/json\" \\\n   -d '{\"resourceRefs\"\
+        : [{\"owner\": \"acme\", \"module\": \"payments\", \"label\": \"main\"}]}')\n \n RESOURCE_MODULE=$(echo \"$RESOURCES_RESP\"\
+        \ | jq -r '.resources[0].module.name')\n-if [ \"$RESOURCE_MODULE\" != \"payments\" ]; then\n+if [ \"$RESOURCE_MODULE\"\
+        \ != \"acme/payments\" ]; then\n   echo \"ERROR: GetResources returned unexpected module: $RESOURCE_MODULE\"\n   exit\
+        \ 1\n fi\n-echo \"  Resource resolved: acme/$RESOURCE_MODULE\"\n+echo \"  Resource resolved: $RESOURCE_MODULE\"\n\
+        \ \n # --------------------------------------------------------------------------\n # Test 9: Write rejection on remote\
+        \ repo\ndiff --git a/scripts/native-tests/verify-hex-resource.py b/scripts/native-tests/verify-hex-resource.py\nnew\
+        \ file mode 100644\nindex 00000000..198a28cd\n--- /dev/null\n+++ b/scripts/native-tests/verify-hex-resource.py\n@@\
+        \ -0,0 +1,72 @@\n+\"\"\"Verify Hex registry signatures and the fixture's protobuf identities.\"\"\"\n+import gzip\n\
+        +import hashlib\n+from pathlib import Path\n+import subprocess\n+import sys\n+import tempfile\n+\n+\n+def fields(data):\n\
+        +    \"\"\"Decode the small protobuf wire subset used by Hex registry resources.\"\"\"\n+    position = 0\n+\n+  \
+        \  def varint():\n+        nonlocal position\n+        value = 0\n+        for shift in range(0, 70, 7):\n+      \
+        \      assert position < len(data), \"truncated protobuf varint\"\n+            byte = data[position]\n+         \
+        \   position += 1\n+            value |= (byte & 127) << shift\n+            if byte < 128:\n+                return\
+        \ value\n+        raise AssertionError(\"oversized protobuf varint\")\n+\n+    result = {}\n+    while position <\
+        \ len(data):\n+        tag = varint()\n+        number, wire = tag >> 3, tag & 7\n+        assert number, \"invalid\
+        \ protobuf field\"\n+        if wire == 0:\n+            value = varint()\n+        elif wire == 2:\n+           \
+        \ length = varint()\n+            assert position + length <= len(data), \"truncated protobuf field\"\n+         \
+        \   value = data[position:position + length]\n+            position += length\n+        else:\n+            raise\
+        \ AssertionError(f\"unexpected protobuf wire type {wire}\")\n+        result.setdefault(number, []).append(value)\n\
+        +    return result\n+\n+\n+resource, public_key, name, version, repository, kind = sys.argv[1:]\n+envelope = fields(gzip.decompress(Path(resource).read_bytes()))\n\
+        +assert len(envelope[1]) == len(envelope[2]) == 1\n+payload, signature = envelope[1][0], envelope[2][0]\n+with tempfile.TemporaryDirectory()\
+        \ as directory:\n+    path = Path(directory)\n+    (path / \"payload\").write_bytes(payload)\n+    (path / \"signature\"\
+        ).write_bytes(signature)\n+    subprocess.run([\"openssl\", \"dgst\", \"-sha512\", \"-verify\", public_key,\n+   \
+        \                 \"-signature\", str(path / \"signature\"), str(path / \"payload\")], check=True)\n+message = fields(payload)\n\
+        +if kind.startswith(\"packages/\"):\n+    assert message[2] == [name.encode()]\n+    assert message[3] == [repository.encode()]\n\
+        +    releases = [fields(value) for value in message[1]]\n+    release = next(value for value in releases if value[1]\
+        \ == [version.encode()])\n+    tarball = Path(resource).parent / f\"{name}-{version}.tar\"\n+    assert release[5]\
+        \ == [hashlib.sha256(tarball.read_bytes()).digest()]\n+    import tarfile\n+    with tarfile.open(tarball) as archive:\n\
+        +        expected = archive.extractfile(\"CHECKSUM\").read().strip().decode()\n+    assert release[2] == [bytes.fromhex(expected)]\n\
+        +else:\n+    assert message[2] == [repository.encode()]\n+    package = next(fields(value) for value in message[1]\n\
+        +                   if fields(value)[1] == [name.encode()])\n+    if kind == \"versions\":\n+        assert version.encode()\
+        \ in package[2]\n+print(f\"PASS: authenticated Hex {kind}\")\nPATCH\ngit apply --check /tmp/native-setups.patch\n\
+        git apply /tmp/native-setups.patch\nbash -n scripts/native-tests/test-curation.sh\n"
     - name: Verify exact product source
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
         actual=$(gh api "repos/${{ matrix.image_repo }}/actions/runs/${{ matrix.image_run }}" --jq .head_sha)
         test "$actual" = "$PRODUCT_SHA"
-    - name: Wait for pinned source image (30-minute limit)
-      env:
-        GH_TOKEN: ${{ github.token }}
-      run: "set -euo pipefail\nfor attempt in $(seq 1 90); do\n  count=$(gh api \"repos/${{ matrix.image_repo }}/actions/runs/${{\
-        \ matrix.image_run }}/artifacts?name=backend-image\" --jq '.artifacts | length')\n  if [ \"$count\" -gt\
-        \ 0 ]; then exit 0; fi\n  image_result=$(gh api \"repos/${{ matrix.image_repo }}/actions/runs/${{ matrix.image_run\
-        \ }}/jobs?per_page=100\" --jq '.jobs[] | select(.name == \"\U0001F433 Build Backend Image\") | .conclusion\
-        \ // \"pending\"')\n  if [ \"$image_result\" = failure ] || [ \"$image_result\" = cancelled ]; then echo\
-        \ \"Source image build failed: $image_result\"; exit 1; fi\n  echo \"Waiting for exact-source backend image\
-        \ ($attempt/90)\"\n  sleep 20\ndone\necho 'Timed out waiting for source image'; exit 1\n"
     - name: Download exact-source CI image
       uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
       with:
@@ -355,14 +446,15 @@ jobs:
         import json,os
         from pathlib import Path
         c=json.loads(Path('source-compose.json').read_text());s=c['services'];b=s['backend'];b.pop('build',None)
-        b['ports']=[{'target':8080,'published':'18080','host_ip':'127.0.0.1','protocol':'tcp'}]
+        b['ports']=[{'target':8080,'published':'18080','host_ip':'0.0.0.0','protocol':'tcp'}]
         for name,v in list(b['networks'].items()):
          v=v or {};v.setdefault('aliases',[]).append('backend.test');b['networks'][name]=v
         for name,v in s.items():
          if name.endswith('-test'):
           env=v.setdefault('environment',{})
           for k in ('ADMIN_PASS','ADMIN_PASSWORD','AK_TEST_ADMIN_PASSWORD'):env[k]=os.environ[k]
-          if 'REGISTRY_URL' in env:env['REGISTRY_URL']='http://backend.test:8080'
+          for k in ('REGISTRY_URL','API_URL','BACKEND_URL'):
+           if k in env:env[k]='http://backend.test:8080'
         s['hex-test']['environment']['HEX_REPO_KEY']='ci-hex'
         s['hex-test']['image']='elixir:1.19-alpine'
         s['protobuf-test']['environment']['REPO_KEY']='ci-protobuf'
@@ -381,6 +473,10 @@ jobs:
          v=s['terraform-mirror-test'];v['environment'].update({'REGISTRY_URL':'https://native.test:8443','SSL_CERT_FILE':'/fixture/ca.crt','CURL_CA_BUNDLE':'/fixture/ca.crt','RUN_TERRAFORM_CLI':'1'})
          v.setdefault('volumes',[]).append({'type':'bind','source':str(Path('.pki').resolve()),'target':'/fixture','read_only':True})
          v.setdefault('depends_on',{})['tls-fixture']={'condition':'service_started'}
+        if os.environ['PROFILE']=='docker':
+         v=s['docker-test'];v.pop('networks',None);v['network_mode']='host';v['environment']['REGISTRY_URL']='http://localhost:18080'
+        if os.environ['PROFILE']=='tag-replication':
+         s['tag-replication-test']['command']=['bash','-c','apt-get update -qq && apt-get install -y -qq curl jq >/dev/null && bash /scripts/test-tag-replication.sh']
         Path('validation-compose.json').write_text(json.dumps(c))
         CONFIG
         python3 configure.py
@@ -486,6 +582,27 @@ jobs:
             export PATH=/tmp/linux-amd64:$PATH
           fi
           timeout 720 python3 strict-native.py > reports/test.log 2>&1
+        elif [[ "$PROFILE" =~ ^(deb-flat-proxy|incus|pacman|pub|pub-proxy|pub-virtual|health-probes)$ ]]; then
+          docker compose -f validation-compose.json up -d --no-build --wait --wait-timeout 180 trivy setup pki > reports/start.log 2>&1
+          export REGISTRY_URL=http://127.0.0.1:18080 API_URL=http://127.0.0.1:18080 CONTAINER_RUNTIME=docker
+          # Repair Linux fixture addressing and current repository API vocabulary only.
+          python3 - <<'HOSTPATCH'
+        from pathlib import Path
+        p=Path('scripts/native-tests/test-incus.sh')
+        p.write_text(p.read_text().replace('\\"hosted\\"','\\"local\\"'))
+        for n in ('pub','pub-proxy','pub-virtual'):
+         p=Path('scripts/native-tests/test-'+n+'.sh');t=p.read_text()
+         t=t.replace('HOST_IP=$(ipconfig getifaddr en0 2>/dev/null || echo "host.docker.internal")','HOST_IP=host.docker.internal')
+         t=t.replace('subjectAltName=IP:$HOST_IP,DNS:localhost','subjectAltName=DNS:host.docker.internal,DNS:localhost,IP:127.0.0.1')
+         t=t.replace('proxy_pass http://host.docker.internal:8080;','proxy_pass http://host.docker.internal:18080;')
+         p.write_text(t)
+        HOSTPATCH
+          if [ "$PROFILE" = deb-flat-proxy ]; then
+            sudo -E timeout 1200 bash "scripts/native-tests/test-$PROFILE.sh" > reports/test.log 2>&1
+          else
+            timeout 1200 bash "scripts/native-tests/test-$PROFILE.sh" > reports/test.log 2>&1
+          fi
+          if grep -Eq 'SKIP:|skipping Dart|Falling back to curl-only' reports/test.log; then echo 'Native profile skipped required work'; exit 1; fi
         else
           target="${PROFILE}-test"
           docker compose -f validation-compose.json up -d --no-build --wait --wait-timeout 180 trivy setup pki > reports/start.log 2>&1
@@ -509,13 +626,22 @@ jobs:
          print('Verified Hex fixture format and visibility')
         BOOTSTRAP
           python3 bootstrap.py > reports/bootstrap.log 2>&1
-          docker compose -f validation-compose.json up -d --no-build "$target" >> reports/start.log 2>&1
-          container="e2e-test-$PROFILE"
-          timeout 720 docker wait "$container" > reports/wait.log
-          docker logs "$container" > reports/test.log 2>&1
-          state=$(docker inspect --format '{{.State.Status}} {{.State.ExitCode}} {{.State.OOMKilled}}' "$container")
-          echo "$state" > reports/exit-state.txt
-          [ "$state" = 'exited 0 false' ]
+          if [ "$PROFILE" = cache-correctness ]; then
+            docker build -t artifact-keeper-mock-upstream:test scripts/native-tests/mock-upstream >> reports/start.log 2>&1
+            target='cache-correctness-test virtual-resolution-test'
+          fi
+          docker compose -f validation-compose.json up -d --no-build $target >> reports/start.log 2>&1
+          containers="e2e-test-$PROFILE"
+          if [ "$PROFILE" = cache-correctness ]; then containers='e2e-test-cache-correctness e2e-test-virtual-resolution'; fi
+          failures=0
+          for container in $containers; do
+            timeout 1200 docker wait "$container" > "reports/$container-wait.log" || failures=1
+            docker logs "$container" > "reports/$container-test.log" 2>&1
+            state=$(docker inspect --format '{{.State.Status}} {{.State.ExitCode}} {{.State.OOMKilled}}' "$container")
+            echo "$container $state" >> reports/exit-state.txt
+            [ "$state" = 'exited 0 false' ] || failures=1
+          done
+          [ "$failures" = 0 ]
         fi
         echo "PASS: $MODE $PROFILE product=$PRODUCT_SHA" | tee reports/result.txt
     - name: Collect diagnostic output
@@ -528,7 +654,7 @@ jobs:
       if: always()
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
-        name: remaining-${{ matrix.mode }}-${{ matrix.profile }}
+        name: native-945c542-${{ matrix.profile }}
         path: reports
         retention-days: 7
     - name: Clean isolated stack
