@@ -12,7 +12,7 @@
 #
 # Requires: curl, jq, psql (postgresql-client), bash
 # Environment: REGISTRY_URL, ADMIN_USER, ADMIN_PASS, MOCK_UPSTREAM_URL, PG* vars
-set -uo pipefail
+set -euo pipefail
 
 REGISTRY_URL="${REGISTRY_URL:-http://localhost:8080}"
 ADMIN_USER="${ADMIN_USER:-admin}"
@@ -58,6 +58,13 @@ echo "=============================================="
 echo "Registry: $REGISTRY_URL"
 echo "Mock upstream: $MOCK_UPSTREAM_URL"
 echo ""
+
+# Re-evaluation processes pending rows only. Reset this disposable fixture's
+# catalog before testing a changed rule, as the service's regression tests do.
+reset_fixture_packages() {
+    local fixture_repo_id="$1"
+    psql -v ON_ERROR_STOP=1 -c "UPDATE curation_packages SET status = 'pending' WHERE staging_repo_id = '$fixture_repo_id';" >/dev/null || exit 1
+}
 
 # ============================================================================
 # Auth
@@ -188,6 +195,13 @@ else
     fail "Stats endpoint: expected 6 review, got $STATS_REVIEW"
 fi
 
+# Existing decisions are preserved by a pending-only re-evaluation.
+UNCHANGED_COUNT=$(curl -fsS -X POST "$CURATION_URL/packages/re-evaluate" \
+    -H "$AUTH" -H 'Content-Type: application/json' \
+    -d "{\"staging_repo_id\":\"$STAGING_RPM_ID\",\"default_action\":\"review\"}")
+[ "$UNCHANGED_COUNT" = "0" ] || { fail "Re-evaluation changed decided rows"; exit 1; }
+pass "Pending-only re-evaluation preserves existing decisions"
+
 # ============================================================================
 # Phase 4: Create block rule and re-evaluate
 # ============================================================================
@@ -207,10 +221,11 @@ else
 fi
 
 # Re-evaluate all packages with default_action=review
-EVAL_COUNT=$(curl -sf -X POST "$CURATION_URL/packages/re-evaluate" \
+EVAL_COUNT=$(reset_fixture_packages "$STAGING_RPM_ID"; curl -sf -X POST "$CURATION_URL/packages/re-evaluate" \
     -H "$AUTH" -H 'Content-Type: application/json' \
     -d "{\"staging_repo_id\":\"$STAGING_RPM_ID\",\"default_action\":\"review\"}")
-pass "Re-evaluated packages (count: $EVAL_COUNT)"
+[ "$EVAL_COUNT" = "6" ] || { fail "Expected six pending fixture rows to be evaluated, got $EVAL_COUNT"; exit 1; }
+pass "Re-evaluated six pending fixture packages"
 
 # Verify telnet-server is blocked
 TELNET_STATUS=$(curl -sf "$CURATION_URL/packages?staging_repo_id=$STAGING_RPM_ID&status=blocked" \
@@ -239,7 +254,7 @@ else
 fi
 
 # Re-evaluate
-curl -sf -X POST "$CURATION_URL/packages/re-evaluate" \
+reset_fixture_packages "$STAGING_RPM_ID"; curl -sf -X POST "$CURATION_URL/packages/re-evaluate" \
     -H "$AUTH" -H 'Content-Type: application/json' \
     -d "{\"staging_repo_id\":\"$STAGING_RPM_ID\",\"default_action\":\"review\"}" > /dev/null
 
@@ -270,7 +285,7 @@ else
 fi
 
 # Re-evaluate
-curl -sf -X POST "$CURATION_URL/packages/re-evaluate" \
+reset_fixture_packages "$STAGING_RPM_ID"; curl -sf -X POST "$CURATION_URL/packages/re-evaluate" \
     -H "$AUTH" -H 'Content-Type: application/json' \
     -d "{\"staging_repo_id\":\"$STAGING_RPM_ID\",\"default_action\":\"review\"}" > /dev/null
 
@@ -302,7 +317,7 @@ else
 fi
 
 # Re-evaluate
-curl -sf -X POST "$CURATION_URL/packages/re-evaluate" \
+reset_fixture_packages "$STAGING_RPM_ID"; curl -sf -X POST "$CURATION_URL/packages/re-evaluate" \
     -H "$AUTH" -H 'Content-Type: application/json' \
     -d "{\"staging_repo_id\":\"$STAGING_RPM_ID\",\"default_action\":\"review\"}" > /dev/null
 
@@ -448,7 +463,7 @@ else
 fi
 
 # Re-evaluate after deleting arch rule: wget should go back to review
-curl -sf -X POST "$CURATION_URL/packages/re-evaluate" \
+reset_fixture_packages "$STAGING_RPM_ID"; curl -sf -X POST "$CURATION_URL/packages/re-evaluate" \
     -H "$AUTH" -H 'Content-Type: application/json' \
     -d "{\"staging_repo_id\":\"$STAGING_RPM_ID\",\"default_action\":\"review\"}" > /dev/null
 
@@ -479,7 +494,7 @@ else
 fi
 
 # Re-evaluate: nano should now be blocked (global rule takes effect, priority 1 < 10)
-curl -sf -X POST "$CURATION_URL/packages/re-evaluate" \
+reset_fixture_packages "$STAGING_RPM_ID"; curl -sf -X POST "$CURATION_URL/packages/re-evaluate" \
     -H "$AUTH" -H 'Content-Type: application/json' \
     -d "{\"staging_repo_id\":\"$STAGING_RPM_ID\",\"default_action\":\"review\"}" > /dev/null
 
@@ -583,7 +598,7 @@ else
 fi
 
 # Re-evaluate DEB packages
-curl -sf -X POST "$CURATION_URL/packages/re-evaluate" \
+reset_fixture_packages "$STAGING_DEB_ID"; curl -sf -X POST "$CURATION_URL/packages/re-evaluate" \
     -H "$AUTH" -H 'Content-Type: application/json' \
     -d "{\"staging_repo_id\":\"$STAGING_DEB_ID\",\"default_action\":\"allow\"}" > /dev/null
 
