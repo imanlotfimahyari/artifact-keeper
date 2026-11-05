@@ -44,7 +44,9 @@ jobs:
       max-parallel: 6
       matrix:
         profiles:
-        - recovery
+        - maven
+        - conda
+        - hex
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
@@ -105,11 +107,26 @@ jobs:
         cfg['services']['conda-test']['environment']['BACKEND_URL']='http://backend.test:8080'
         cfg['services']['conda-test']['environment']['AUTH_USER']='admin'
         cfg['services']['conda-test']['environment']['AUTH_PASS']=os.environ['ADMIN_PASS']
-        cfg['services']['conda-test']['command']=['bash','-c','apt-get update -qq && apt-get install -y -qq --no-install-recommends curl jq >/dev/null && bash /scripts/test-conda.sh']
+        cfg['services']['conda-test']['command']=['bash','-c','apt-get update -qq && apt-get install -y -qq --no-install-recommends curl jq zip unzip bzip2 zstd >/dev/null && bash /scripts/test-conda.sh']
+        cfg['services']['maven-test']['environment']['REGISTRY_URL']='http://backend.test:8080/maven/test-maven'
+        cfg['services']['maven-test']['environment']['REGISTRY_USER']='admin'
+        cfg['services']['maven-test']['environment']['REGISTRY_PASS']=os.environ['ADMIN_PASS']
         if 'mock-upstream' in cfg['services']:
             cfg['services']['mock-upstream']['healthcheck']['test']=['CMD','wget','-q','--spider','http://127.0.0.1/rpm/repodata/repomd.xml']
         Path('validation-compose.json').write_text(json.dumps(cfg))
         CONFIG
+          if [ "$profile" = hex ]; then
+            docker compose -f validation-compose.json up -d --no-build --wait --wait-timeout 180 setup > validation-reports/hex-fixture-start.log 2>&1
+            python3 - <<'HEXFIXTURE'
+        import json,os,urllib.request
+        base='http://127.0.0.1:18080'
+        r=urllib.request.Request(base+'/api/v1/auth/login',data=json.dumps({'username':'admin','password':os.environ['ADMIN_PASS']}).encode(),headers={'Content-Type':'application/json'})
+        with urllib.request.urlopen(r,timeout=20) as f: token=json.load(f)['access_token']
+        r=urllib.request.Request(base+'/api/v1/repositories',data=json.dumps({'key':'test-hex','name':'Hex synthetic fixture','format':'hex','repo_type':'local','is_public':True}).encode(),headers={'Content-Type':'application/json','Authorization':'Bearer '+token})
+        with urllib.request.urlopen(r,timeout=20) as f: assert 200<=f.status<300
+        print('Created missing Hex repository fixture')
+        HEXFIXTURE
+          fi
           if [ "$profile" = cache-correctness ]; then
             docker compose -f validation-compose.json build cache-mock-upstream > validation-reports/cache-mock-build.log 2>&1
           fi
@@ -202,23 +219,26 @@ jobs:
             assert code==200 and actual==payload,('download/checksum',i,code)
             return i
 
-        transfer(0)
-        compose('pause','postgres')
+        with cf.ThreadPoolExecutor(max_workers=20) as pool:
+            assert len(list(pool.map(transfer,range(100))))==100
+        print('PASS: 100 uploads/downloads at concurrency 20, every byte verified; bounded HTTP 429 retries respected',flush=True)
+        compose('kill','backend')
+        compose('up','-d','backend')
+        ready(); transfer(101)
+        print('PASS: backend kill/restart preserves existing and accepts new artifacts',flush=True)
+        code,data=api('GET','/api/v1/repositories/'+repo+'/download/0.bin')
+        assert code==200 and data==hashlib.sha256(b'0').digest()*2048
+        compose('stop','postgres')
         try:
-            try:
-                code,_=api('PUT',path+'db-paused.bin',b'database outage probe',timeout=15)
-                assert 500<=code<600,('paused database status',code)
-            except (OSError,TimeoutError):
-                pass
-        finally: compose('unpause','postgres')
+            code,_=api('PUT',path+'db-offline.bin',b'database outage probe',timeout=45)
+            assert 500<=code<600,('database outage status',code)
+        finally: compose('start','postgres')
         for _ in range(60):
             try:
                 transfer(102); break
             except (AssertionError,OSError,TimeoutError): time.sleep(2)
         else: raise AssertionError('database recovery timeout')
-        code,data=api('GET','/api/v1/repositories/'+repo+'/download/0.bin')
-        assert code==200 and data==hashlib.sha256(b'0').digest()*2048
-        print('PASS: database pause/unpause preserves old artifacts and restores verified reads/writes',flush=True)
+        print('PASS: database outage fails the write and recovers after restart',flush=True)
         compose('exec','-T','--user','root','backend','chmod','-R','a-w','/data/storage')
         try:
             code,_=api('PUT',path+'storage-readonly.bin',b'unique storage failure probe')
