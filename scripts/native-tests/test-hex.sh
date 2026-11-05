@@ -103,8 +103,8 @@ command -v mix >/dev/null || { echo "FAIL: native Mix client is required"; exit 
 export MIX_HOME="$WORK_DIR/mix" HEX_HOME="$WORK_DIR/hex"
 mix local.hex 2.5.2 --force
 mix hex.repo add "$HEX_REPO_KEY" "$HEX_URL" --public-key="$WORK_DIR/registry-key.pem"
-mix hex.package fetch "$PKG_NAME" "$TEST_VERSION" --repo="$HEX_REPO_KEY" --output="$WORK_DIR/native.tar"
-cmp "$TARBALL" "$WORK_DIR/native.tar"
+mix hex.package fetch "$PKG_NAME" "$TEST_VERSION" --repo="$HEX_REPO_KEY" --output="$WORK_DIR/native"
+cmp "$TARBALL" "$WORK_DIR/native/${PKG_NAME}-${TEST_VERSION}.tar"
 echo "  Native Hex fetched and verified the exact published tarball"
 
 # ---- Test 3: Download tarball ----

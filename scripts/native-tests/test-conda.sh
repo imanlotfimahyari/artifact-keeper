@@ -567,7 +567,7 @@ fi
 
 # .condarc URL format
 log "Testing .condarc channel URL format..."
-CONDARC_TEST="$WORK_DIR/.condarc-test"
+CONDARC_TEST="$WORK_DIR/.condarc"
 cat > "$CONDARC_TEST" << EOF
 channels:
   - $BACKEND_URL/conda/$REPO_KEY
