@@ -1,0 +1,172 @@
+name: PR 5194 native matrix on 008a3369
+on:
+  push:
+    branches: [validation/5194-ca-release-gate]
+    paths: [.github/workflows/ca-native-matrix.yml]
+permissions:
+  actions: read
+  contents: read
+env:
+  HEAD_SHA: 008a3369c1fd1f89daf1ed79a2793cda3720f234
+  BASE_SHA: 3036a861fa50fb3311f60414a746ed86f2ace95a
+  IMAGE_RUN: '44722456710'
+  BASE_IMAGE: ghcr.io/artifact-keeper/artifact-keeper-backend@sha256:2a2bbbc4a8e671611ba18c1a627e2168c334d383a1a324dff04f317b293f0187
+jobs:
+  native:
+    name: Native / ${{ matrix.profile }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 48
+    strategy:
+      fail-fast: false
+      max-parallel: 15
+      matrix:
+        profile: [pypi, npm, cargo, maven, go, rpm, deb, deb-flat-proxy, helm, conda, docker, protobuf, protobuf-buf-cli, incus, hex, pacman, pub, proxy-virtual, pub-proxy, pub-virtual, health-probes, tag-replication, curation, docker-proxy, storage-gc, cache-correctness, terraform-mirror, terraform-modules]
+    env:
+      PROFILE: ${{ matrix.profile }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 008a3369c1fd1f89daf1ed79a2793cda3720f234
+          persist-credentials: false
+      - name: Verify the backend source and measure runner memory
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$HEAD_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$IMAGE_RUN" --jq .head_sha)" = "$HEAD_SHA"
+          free -h
+          for limit in /sys/fs/cgroup/memory.max /sys/fs/cgroup/memory.high; do
+            if [[ -r "$limit" ]]; then cat "$limit"; fi
+          done
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ env.IMAGE_RUN }}
+          name: backend-image
+          path: ${{ runner.temp }}/backend-image
+      - name: Prepare the previously validated native harness
+        run: |
+          fixture_ref=3030bf550517b30f096513e37e1bffdfdd99dd83
+          if [[ "$PROFILE" == conda ]]; then
+            fixture_ref=342dd5949ec03eb9cc467d5984671a36b7e9c6c9
+            curl -fsSL https://raw.githubusercontent.com/imanlotfimahyari/artifact-keeper/945c542c574b68e6934aad4565f1f8575465ad0f/scripts/native-tests/test-conda.sh > "$RUNNER_TEMP/conda-original.sh"
+          fi
+          curl -fsSL "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$fixture_ref/.github/workflows/ca-validation-extra.yml" -o "$RUNNER_TEMP/fixtures.yml"
+          python3 - <<'PY'
+          import os, pathlib, yaml
+          temp = pathlib.Path(os.environ['RUNNER_TEMP'])
+          steps = yaml.safe_load((temp/'fixtures.yml').read_text())['jobs']['native']['steps']
+          scripts = {step.get('name'): step.get('run') for step in steps}
+          patch = scripts['Apply isolated native test repairs']
+          run = scripts['Run strict native validation']
+          profile = os.environ['PROFILE']
+          if profile == 'conda':
+              patch = patch.replace('git apply --check /tmp/native-setups.patch', 'git apply --include=scripts/native-tests/test-conda.sh --check /tmp/native-setups.patch').replace('git apply /tmp/native-setups.patch', 'git apply --include=scripts/native-tests/test-conda.sh /tmp/native-setups.patch')
+              run = run[:run.index('python3 -m venv')] + run[run.index("cat > strict-native.py"):]
+          else:
+              patch = patch.replace('git apply ', 'git apply --exclude=scripts/native-tests/test-conda.sh --exclude=scripts/native-tests/test-protobuf.sh ')
+          if profile == 'protobuf-buf-cli':
+              run = run[:run.index("cat > strict-native.py")] + '''
+          docker compose -f validation-compose.json up -d --no-build --wait --wait-timeout 180 postgres backend > reports/start.log 2>&1
+          REGISTRY_URL=http://127.0.0.1:18080 timeout 720 bash scripts/native-tests/test-protobuf-buf-cli.sh > reports/test.log 2>&1
+          '''
+          (temp/'fixtures.sh').write_text(patch)
+          (temp/'native.sh').write_text(run)
+          PY
+          bash -n "$RUNNER_TEMP/fixtures.sh"
+          bash -n "$RUNNER_TEMP/native.sh"
+          if [[ "$PROFILE" == protobuf-buf-cli ]]; then
+            mkdir -p "$RUNNER_TEMP/bin"
+            curl -fsSL https://github.com/bufbuild/buf/releases/download/v1.61.0/buf-Linux-x86_64 -o "$RUNNER_TEMP/bin/buf"
+            printf '%s  %s\n' d82849eca790bacb5b8885a027f31bbfbfdf72b2d93bc82bda8cb2ca20e4faca "$RUNNER_TEMP/bin/buf" | sha256sum -c
+            chmod +x "$RUNNER_TEMP/bin/buf"
+          fi
+      - name: Run the profile and compare a failure with the PR base
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/evidence"
+          mkdir -p "$evidence"
+          gzip -dc "$RUNNER_TEMP/backend-image/backend-image.tar.gz" | docker load
+          git worktree add --detach "$RUNNER_TEMP/base-harness" "$HEAD_SHA"
+
+          run_profile() (
+            local directory="$1" source_image="$2" revision="$3" mode="$4"
+            cd "$directory"
+            if [[ "$PROFILE" == conda ]]; then
+              cp "$RUNNER_TEMP/conda-original.sh" scripts/native-tests/test-conda.sh
+            fi
+            bash -e "$RUNNER_TEMP/fixtures.sh" || exit 1
+            docker tag "$source_image" artifact-keeper-backend:test || exit 1
+            PATH="$RUNNER_TEMP/bin:$PATH" MODE="$mode" PRODUCT_SHA="$revision" bash -e "$RUNNER_TEMP/native.sh"
+          )
+
+          collect() (
+            local directory="$1" mode="$2"
+            cd "$directory"
+            if [[ -f validation-compose.json ]]; then
+              docker compose -f validation-compose.json logs --no-color > reports/stack.log 2>&1 || true
+              docker compose -f validation-compose.json down -v --remove-orphans
+            fi
+            for log in reports/*.log reports/*.txt; do
+              [[ -f "$log" ]] || continue
+              grep -Ei 'fail|error|status|passed|skip|exited|timed out' "$log" | grep -Eiv 'authorization|password|bearer|secret|token|private key|cookie' | sed -E 's/([0-9]{1,3}\.){3}[0-9]{1,3}/[IP_ADDRESS]/g' | tail -35 > "$evidence/$mode-${log##*/}" || true
+            done
+          )
+
+          if run_profile "$PWD" artifact-keeper-backend:pr-test "$HEAD_SHA" head; then
+            echo "PASS $PROFILE on $HEAD_SHA" | tee "$evidence/result.txt" >> "$GITHUB_STEP_SUMMARY"
+            collect "$PWD" head
+            exit 0
+          fi
+          echo "FAIL $PROFILE on $HEAD_SHA" | tee "$evidence/result.txt" >> "$GITHUB_STEP_SUMMARY"
+          collect "$PWD" head
+          docker pull "$BASE_IMAGE"
+          test "$(docker inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$BASE_IMAGE")" = "$BASE_SHA"
+          if run_profile "$RUNNER_TEMP/base-harness" "$BASE_IMAGE" "$BASE_SHA" base; then
+            echo "PASS $PROFILE on $BASE_SHA" | tee -a "$evidence/result.txt" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "FAIL $PROFILE on $BASE_SHA" | tee -a "$evidence/result.txt" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          collect "$RUNNER_TEMP/base-harness" base
+          cat "$evidence/result.txt"
+          for details in "$evidence"/*test.log "$evidence"/*start.log; do
+            if [[ -s "$details" ]]; then printf "%s\n" "$details"; cat "$details"; fi
+          done
+          exit 1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: native-008a3369-${{ matrix.profile }}
+          path: ${{ runner.temp }}/evidence
+          if-no-files-found: ignore
+          retention-days: 7
+  audit:
+    name: Audit / ${{ matrix.revision }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - revision: head
+            repository: imanlotfimahyari/artifact-keeper
+            sha: 008a3369c1fd1f89daf1ed79a2793cda3720f234
+          - revision: base
+            repository: artifact-keeper/artifact-keeper
+            sha: 3036a861fa50fb3311f60414a746ed86f2ace95a
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: ${{ matrix.repository }}
+          ref: ${{ matrix.sha }}
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@1.98.0
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+      - name: Audit the pinned revision
+        env:
+          AUDIT_SHA: ${{ matrix.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$AUDIT_SHA"
+          cargo audit
