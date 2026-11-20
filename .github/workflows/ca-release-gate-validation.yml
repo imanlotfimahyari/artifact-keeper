@@ -1,0 +1,83 @@
+name: Validate CA rotation on backend 008a3369
+
+on:
+  push:
+    branches: [validation/5194-ca-release-gate]
+    paths: ['.github/workflows/ca-release-gate-validation.yml']
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  custom-ca-rotation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      BUILD_RUN: '44722456710'
+      BACKEND_SHA: 008a3369c1fd1f89daf1ed79a2793cda3720f234
+      TESTS_SHA: b03fcec39d010d6d97159364dcb1284d086ffda3
+    steps:
+      - name: Check out test PR 916
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: artifact-keeper/artifact-keeper-test
+          ref: b03fcec39d010d6d97159364dcb1284d086ffda3
+          persist-credentials: false
+
+      - name: Wait for the image from the pinned backend commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          run="repos/$GITHUB_REPOSITORY/actions/runs/$BUILD_RUN"
+          actual_sha="$(gh api "$run" --jq .head_sha)"
+          test "$actual_sha" = "$BACKEND_SHA"
+          test "$(git rev-parse HEAD)" = "$TESTS_SHA"
+          echo "Backend $actual_sha, tests $TESTS_SHA, build run $BUILD_RUN"
+          for attempt in {1..90}; do
+            image_count="$(gh api "$run/artifacts" --jq '[.artifacts[] | select(.name == "backend-image" and .expired == false)] | length')"
+            if [ "$image_count" -eq 1 ]; then
+              exit 0
+            fi
+            if [ "$(gh api "$run" --jq .status)" = completed ]; then
+              echo '::error::Backend CI finished without a usable backend-image artifact'
+              exit 1
+            fi
+            sleep 30
+          done
+          echo '::error::Timed out waiting for backend-image'
+          exit 1
+
+      - name: Download the backend image from CI
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ env.BUILD_RUN }}
+          name: backend-image
+          path: ${{ runner.temp }}/backend-image
+
+      - name: Run the mounted CA rotation release-gate tier
+        run: |
+          set -euo pipefail
+          gzip -dc "$RUNNER_TEMP/backend-image/backend-image.tar.gz" | docker load
+          docker image inspect artifact-keeper-backend:pr-test --format 'Backend image ID {{.Id}}'
+          bash deploy-test/harness/run.sh custom-ca-rotation --backend-image artifact-keeper-backend:pr-test
+          python3 - <<'PY'
+          from pathlib import Path
+          from xml.etree import ElementTree
+
+          files = Path('deploy-test/results/custom-ca-rotation').rglob('*.xml')
+          cases = [case for file in files for case in ElementTree.parse(file).iter('testcase')]
+          assert len(cases) == 6, f'Expected six assertions, found {len(cases)}'
+          assert all(len(case) == 0 or not any(child.tag in ('failure', 'error', 'skipped') for child in case) for case in cases)
+          print('PASS: all six CA rotation assertions')
+          PY
+
+      - name: Upload the tier result
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: junit-custom-ca-rotation
+          path: deploy-test/results/custom-ca-rotation/
+          if-no-files-found: ignore
